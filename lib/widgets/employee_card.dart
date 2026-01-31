@@ -178,6 +178,8 @@ class _EmployeeCardState extends State<EmployeeCard>
       child: Card(
         elevation: 0,
         color: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
