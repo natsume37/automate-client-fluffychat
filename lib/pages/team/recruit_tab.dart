@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import '../../models/agent_template.dart';
+import '../../models/hire_result.dart';
 import '../../repositories/agent_repository.dart';
 import '../../repositories/agent_template_repository.dart';
 import '../../services/agent_service.dart';
@@ -109,7 +110,7 @@ class RecruitTabState extends State<RecruitTab>
   Future<void> refresh() => _loadTemplates();
 
   Future<void> _onTemplateTap(AgentTemplate template) async {
-    final result = await showDialog<UnifiedCreateAgentResponse>(
+    final result = await showDialog<HireResult>(
       context: context,
       builder: (context) => HireDialog(
         template: template,
@@ -124,7 +125,7 @@ class RecruitTabState extends State<RecruitTab>
     final isDesktop = FluffyThemes.isColumnMode(context);
 
     final result = isDesktop
-        ? await showDialog<UnifiedCreateAgentResponse>(
+        ? await showDialog<HireResult>(
             context: context,
             builder: (context) => Dialog(
               backgroundColor: Colors.transparent,
@@ -137,7 +138,7 @@ class RecruitTabState extends State<RecruitTab>
               ),
             ),
           )
-        : await showModalBottomSheet<UnifiedCreateAgentResponse>(
+        : await showModalBottomSheet<HireResult>(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
@@ -151,8 +152,9 @@ class RecruitTabState extends State<RecruitTab>
     _handleHireResult(result);
   }
 
-  void _handleHireResult(UnifiedCreateAgentResponse? result) {
+  void _handleHireResult(HireResult? result) {
     if (result != null && mounted) {
+      final response = result.response;
       // 自动刷新员工列表（后台刷新，用户切回时能看到新员工）
       widget.onRefreshEmployees?.call();
 
@@ -167,14 +169,18 @@ class RecruitTabState extends State<RecruitTab>
         _employeeCount++;
       });
 
-      // 从 matrixUserId 提取员工名称 (@name:domain -> name)
-      String employeeName = 'Employee';
-      if (result.matrixUserId.isNotEmpty) {
-        final userId = result.matrixUserId;
-        if (userId.startsWith('@') && userId.contains(':')) {
-          employeeName = userId.substring(1, userId.indexOf(':'));
+      String employeeName = result.displayName.trim();
+      if (employeeName.isEmpty) {
+        // 兜底：从 matrixUserId 提取员工名称 (@name:domain -> name)
+        if (response.matrixUserId.isNotEmpty) {
+          final userId = response.matrixUserId;
+          if (userId.startsWith('@') && userId.contains(':')) {
+            employeeName = userId.substring(1, userId.indexOf(':'));
+          } else {
+            employeeName = userId;
+          }
         } else {
-          employeeName = userId;
+          employeeName = 'Employee';
         }
       }
 

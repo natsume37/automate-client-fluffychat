@@ -63,6 +63,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final displayName = widget.employeeName.trim();
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -85,6 +86,14 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
           constraints: const BoxConstraints(maxWidth: 360),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.surface,
+                theme.colorScheme.surfaceContainerLow,
+              ],
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.green.withAlpha(30),
@@ -114,11 +123,16 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
+
+                if (displayName.isNotEmpty) ...[
+                  _buildNameBadge(theme, displayName),
+                  const SizedBox(height: 12),
+                ],
 
                 // 副标题
                 Text(
-                  l10n.hireSuccessMessage(widget.employeeName),
+                  l10n.hireSuccessGeneric,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     height: 1.4,
@@ -268,6 +282,42 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNameBadge(ThemeData theme, String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withAlpha(80),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: theme.colorScheme.primary.withAlpha(60),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.badge_rounded,
+            size: 16,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: Text(
+              name,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
 
 import '../models/agent_template.dart';
+import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
 import 'custom_network_image.dart';
 
@@ -101,7 +102,10 @@ class _HireDialogState extends State<HireDialog> {
       );
       if (mounted) {
         // 返回响应对象，调用方可以获取 agentId、matrixUserId 等
-        Navigator.of(context).pop(response);
+        Navigator.of(context).pop(HireResult(
+          response: response,
+          displayName: name,
+        ));
       }
     } catch (e) {
       if (mounted) {

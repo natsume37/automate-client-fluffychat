@@ -40,6 +40,7 @@ class EmployeesTabState extends State<EmployeesTab>
   int? _nextCursor;
   bool _hasMore = true;
   String? _trialExpiresAt;
+  final Set<String> _deletingEmployees = <String>{};
 
   // 轮询定时器：用于检测员工 isReady 状态变化
   Timer? _readyPollingTimer;
@@ -201,6 +202,16 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// 打开员工详情 Sheet（移动端）或对话框（PC端）
   void _onEmployeeTap(Agent employee) {
+    if (_deletingEmployees.contains(employee.agentId)) {
+      final l10n = L10n.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.loadingPleaseWait),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final isDesktop = FluffyThemes.isColumnMode(context);
 
     if (isDesktop) {
@@ -214,6 +225,7 @@ class EmployeesTabState extends State<EmployeesTab>
             child: EmployeeDetailSheet(
               employee: employee,
               onDelete: () => _deleteEmployee(employee),
+              isDeleting: _deletingEmployees.contains(employee.agentId),
               isDialog: true,
             ),
           ),
@@ -230,6 +242,7 @@ class EmployeesTabState extends State<EmployeesTab>
         builder: (context) => EmployeeDetailSheet(
           employee: employee,
           onDelete: () => _deleteEmployee(employee),
+          isDeleting: _deletingEmployees.contains(employee.agentId),
         ),
       );
     }
@@ -239,6 +252,10 @@ class EmployeesTabState extends State<EmployeesTab>
   void _onEmployeeLongPress(Agent employee, Offset tapPosition) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
+    final isDeleting = _deletingEmployees.contains(employee.agentId);
+    final chatEnabled = employee.isReady && !isDeleting;
+    final detailsEnabled = !isDeleting;
+    final deleteEnabled = !isDeleting;
 
     showMenu<String>(
       context: context,
@@ -255,13 +272,13 @@ class EmployeesTabState extends State<EmployeesTab>
         // 开始聊天
         PopupMenuItem<String>(
           value: 'chat',
-          enabled: employee.isReady,
+          enabled: chatEnabled,
           child: Row(
             children: [
               Icon(
                 Icons.chat_outlined,
                 size: 20,
-                color: employee.isReady
+                color: chatEnabled
                     ? theme.colorScheme.primary
                     : theme.colorScheme.outline,
               ),
@@ -269,7 +286,7 @@ class EmployeesTabState extends State<EmployeesTab>
               Text(
                 l10n.startChat,
                 style: TextStyle(
-                  color: employee.isReady ? null : theme.colorScheme.outline,
+                  color: chatEnabled ? null : theme.colorScheme.outline,
                 ),
               ),
             ],
@@ -278,15 +295,23 @@ class EmployeesTabState extends State<EmployeesTab>
         // 查看详情
         PopupMenuItem<String>(
           value: 'details',
+          enabled: detailsEnabled,
           child: Row(
             children: [
               Icon(
                 Icons.info_outline,
                 size: 20,
-                color: theme.colorScheme.onSurface,
+                color: detailsEnabled
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.outline,
               ),
               const SizedBox(width: 12),
-              Text(l10n.viewDetails),
+              Text(
+                l10n.viewDetails,
+                style: TextStyle(
+                  color: detailsEnabled ? null : theme.colorScheme.outline,
+                ),
+              ),
             ],
           ),
         ),
@@ -294,17 +319,24 @@ class EmployeesTabState extends State<EmployeesTab>
         // 优化（删除）
         PopupMenuItem<String>(
           value: 'delete',
+          enabled: deleteEnabled,
           child: Row(
             children: [
               Icon(
                 Icons.delete_outline,
                 size: 20,
-                color: theme.colorScheme.error,
+                color: deleteEnabled
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.outline,
               ),
               const SizedBox(width: 12),
               Text(
                 l10n.deleteEmployee,
-                style: TextStyle(color: theme.colorScheme.error),
+                style: TextStyle(
+                  color: deleteEnabled
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.outline,
+                ),
               ),
             ],
           ),
@@ -465,11 +497,21 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// 优化员工
   Future<void> _deleteEmployee(Agent employee) async {
+    if (_deletingEmployees.contains(employee.agentId)) {
+      return;
+    }
+    setState(() {
+      _deletingEmployees.add(employee.agentId);
+    });
+
     try {
       await _repository.deleteAgent(employee.agentId);
-      setState(() {
-        _employees.removeWhere((e) => e.agentId == employee.agentId);
-      });
+      if (mounted) {
+        setState(() {
+          _employees.removeWhere((e) => e.agentId == employee.agentId);
+          _deletingEmployees.remove(employee.agentId);
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -479,6 +521,11 @@ class EmployeesTabState extends State<EmployeesTab>
         );
       }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _deletingEmployees.remove(employee.agentId);
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -645,14 +692,22 @@ class EmployeesTabState extends State<EmployeesTab>
                       }
 
                       final employee = _employees[index];
+                      final isDeleting =
+                          _deletingEmployees.contains(employee.agentId);
                       return GestureDetector(
                         // PC端使用右键触发快捷菜单
                         onSecondaryTapDown: (details) {
-                          _onEmployeeLongPress(employee, details.globalPosition);
+                          if (!isDeleting) {
+                            _onEmployeeLongPress(
+                              employee,
+                              details.globalPosition,
+                            );
+                          }
                         },
                         child: EmployeeCard(
                           employee: employee,
-                          onTap: () => _onEmployeeTap(employee),
+                          isOffboarding: isDeleting,
+                          onTap: isDeleting ? null : () => _onEmployeeTap(employee),
                         ),
                       );
                     },
@@ -698,15 +753,20 @@ class EmployeesTabState extends State<EmployeesTab>
                 }
 
                 final employee = _employees[index];
+                final isDeleting =
+                    _deletingEmployees.contains(employee.agentId);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GestureDetector(
                     onLongPressStart: (details) {
-                      _onEmployeeLongPress(employee, details.globalPosition);
+                      if (!isDeleting) {
+                        _onEmployeeLongPress(employee, details.globalPosition);
+                      }
                     },
                     child: EmployeeCard(
                       employee: employee,
-                      onTap: () => _onEmployeeTap(employee),
+                      isOffboarding: isDeleting,
+                      onTap: isDeleting ? null : () => _onEmployeeTap(employee),
                     ),
                   ),
                 );

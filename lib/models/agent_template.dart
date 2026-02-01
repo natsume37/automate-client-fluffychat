@@ -126,7 +126,7 @@ class UnifiedCreateAgentRequest {
   final String name; // Agent 名称（必填）
   final String invitationCode; // 邀请码（必填，开发环境可传空字符串）
   final int? templateId; // 模板 ID（可选，提供则基于模板创建）
-  final String? systemPrompt; // 系统提示词（无模板时必填）
+  final String? systemPrompt; // 系统提示词（无模板时由服务端默认）
   final String? userRules; // 用户规则（可选，会追加到 system_prompt）
   final List<PluginConfig>? plugins; // 插件列表（可选）
   final String? apiKey; // Agent 专属 API Key（可选）

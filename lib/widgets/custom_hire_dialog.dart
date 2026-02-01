@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
 
 import '../models/plugin.dart';
+import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
 import '../repositories/plugin_repository.dart';
 import 'custom_network_image.dart';
 import 'dicebear_avatar_picker.dart';
 
 /// 定制招聘向导（三步）
-/// 第1步：基本信息（名称 + 系统提示词）
+/// 第1步：基本信息（名称 + 邀请码）
 /// 第2步：选择插件（多选）
 /// 第3步：配置插件（如有需要）
 class CustomHireDialog extends StatefulWidget {
@@ -35,7 +36,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   // 表单控制器
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _invitationCodeController = TextEditingController();
-  final TextEditingController _systemPromptController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
 
   // 插件相关
@@ -56,12 +56,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   // 名称长度限制
   static const int _maxNameLength = 20;
 
-  // System prompt 长度限制
-  static const int _maxSystemPromptLength = 5000;
-
-  // 默认 system prompt（用户不填时使用）
-  static const String _defaultSystemPrompt = 'You are a helpful assistant.';
-
   // 验证状态
   bool get _isNameValid =>
       _nameController.text.trim().isNotEmpty &&
@@ -72,9 +66,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       _nameController.text.trim().split('').every((c) => '0123456789'.contains(c));
   bool get _isNameTooLong =>
       _nameController.text.trim().length > _maxNameLength;
-  bool get _isSystemPromptTooLong =>
-      _systemPromptController.text.length > _maxSystemPromptLength;
-
   @override
   void initState() {
     super.initState();
@@ -111,7 +102,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   void dispose() {
     _nameController.dispose();
     _invitationCodeController.dispose();
-    _systemPromptController.dispose();
     _nameFocusNode.dispose();
     _pluginRepository.dispose();
     // 清理所有配置控制器
@@ -161,13 +151,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           } else if (_isNameTooLong) {
             _error = L10n.of(context).employeeNameTooLong;
           }
-        });
-        return;
-      }
-      // 验证 system prompt 长度
-      if (_isSystemPromptTooLong) {
-        setState(() {
-          _error = L10n.of(context).systemPromptTooLong;
         });
         return;
       }
@@ -335,22 +318,19 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         );
       }).toList();
 
-      // 调用创建接口
-      // 如果用户没填 system prompt，使用默认值（接口要求 system_prompt 和 template_id 至少填一个）
-      final systemPrompt = _systemPromptController.text.trim().isNotEmpty
-          ? _systemPromptController.text.trim()
-          : _defaultSystemPrompt;
-
+      // 调用创建接口（服务端会注入默认 system prompt）
       final response = await widget.repository.createCustomAgentWithPlugins(
         name: _nameController.text.trim(),
-        systemPrompt: systemPrompt,
         plugins: plugins.isNotEmpty ? plugins : null,
         invitationCode: invitationCode,
         avatarUrl: _avatarUrl,
       );
 
       if (mounted) {
-        Navigator.of(context).pop(response);
+        Navigator.of(context).pop(HireResult(
+          response: response,
+          displayName: _nameController.text.trim(),
+        ));
       }
     } catch (e) {
       if (mounted) {
@@ -662,34 +642,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           icon: Icons.vpn_key_outlined,
           enabled: !_isSubmitting,
         ),
-        const SizedBox(height: 20),
-
-        // 系统提示词
-        _buildInputField(
-          theme: theme,
-          controller: _systemPromptController,
-          label: l10n.systemPrompt,
-          hint: l10n.systemPromptHint,
-          icon: Icons.psychology_outlined,
-          minLines: 4,
-          maxLines: 6,
-          enabled: !_isSubmitting,
-          isOptional: true,
-          onChanged: (_) => setState(() {}),
-          maxLength: _maxSystemPromptLength,
-          showCounter: true,
-          isError: _isSystemPromptTooLong,
-          errorText: _isSystemPromptTooLong ? l10n.systemPromptTooLong : null,
-        ),
-        const SizedBox(height: 12),
-
-        // 提示卡片
-        _buildInfoCard(
-          theme: theme,
-          icon: Icons.lightbulb_outline_rounded,
-          text: l10n.systemPromptHelp,
-          color: theme.colorScheme.tertiaryContainer,
-        ),
+        const SizedBox(height: 8),
       ],
     );
   }

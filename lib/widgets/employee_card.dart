@@ -8,17 +8,19 @@ import 'custom_network_image.dart';
 
 /// 员工卡片组件
 /// 显示员工头像、名称、状态徽章、工作状态
-/// 入职中状态会显示脉冲动画效果
+/// 入职/离职状态会显示脉冲动画效果
 class EmployeeCard extends StatefulWidget {
   final Agent employee;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final bool isOffboarding;
 
   const EmployeeCard({
     super.key,
     required this.employee,
     this.onTap,
     this.onLongPress,
+    this.isOffboarding = false,
   });
 
   @override
@@ -42,8 +44,8 @@ class _EmployeeCardState extends State<EmployeeCard>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // 只有入职中状态才启动动画
-    if (!widget.employee.isReady) {
+    // 入职/离职状态才启动动画
+    if (_shouldPulse(widget)) {
       _pulseController.repeat(reverse: true);
     }
   }
@@ -51,15 +53,17 @@ class _EmployeeCardState extends State<EmployeeCard>
   @override
   void didUpdateWidget(EmployeeCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 状态变化时更新动画
-    if (widget.employee.isReady != oldWidget.employee.isReady) {
-      if (!widget.employee.isReady) {
-        _pulseController.repeat(reverse: true);
-      } else {
-        _pulseController.stop();
-        _pulseController.reset();
-      }
+    final oldShouldPulse = _shouldPulse(oldWidget);
+    final newShouldPulse = _shouldPulse(widget);
+    if (oldShouldPulse == newShouldPulse) {
+      return;
     }
+    if (newShouldPulse) {
+      _pulseController.repeat(reverse: true);
+      return;
+    }
+    _pulseController.stop();
+    _pulseController.reset();
   }
 
   @override
@@ -72,31 +76,45 @@ class _EmployeeCardState extends State<EmployeeCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
-    final isOnboarding = !widget.employee.isReady;
+    final isOffboarding = widget.isOffboarding;
+    final isOnboarding = !widget.employee.isReady && !isOffboarding;
 
     // 将动画部分分离，只在需要时才使用 AnimatedBuilder
-    if (isOnboarding) {
+    if (isOnboarding || isOffboarding) {
       return AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
           // 入职中状态时有微妙的发光效果
           final glowOpacity = _pulseAnimation.value * 0.3;
-          final cardColor = Color.lerp(
-            theme.colorScheme.surfaceContainerLow,
-            Colors.orange.withValues(alpha: 0.08),
-            _pulseAnimation.value * 0.3,
-          );
-          final borderColor = Color.lerp(
-            theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-            Colors.orange.withValues(alpha: 0.4),
-            _pulseAnimation.value * 0.5,
-          )!;
+          final cardColor = isOffboarding
+              ? Color.lerp(
+                  theme.colorScheme.surfaceContainerLow,
+                  theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                  _pulseAnimation.value * 0.4,
+                )
+              : Color.lerp(
+                  theme.colorScheme.surfaceContainerLow,
+                  Colors.orange.withValues(alpha: 0.08),
+                  _pulseAnimation.value * 0.3,
+                );
+          final borderColor = isOffboarding
+              ? Color.lerp(
+                  theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                  theme.colorScheme.error.withValues(alpha: 0.45),
+                  _pulseAnimation.value * 0.6,
+                )!
+              : Color.lerp(
+                  theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                  Colors.orange.withValues(alpha: 0.4),
+                  _pulseAnimation.value * 0.5,
+                )!;
 
           return _buildCardContainer(
             context,
             theme,
             l10n,
-            isOnboarding: true,
+            isOnboarding: isOnboarding,
+            isOffboarding: isOffboarding,
             glowOpacity: glowOpacity,
             cardColor: cardColor,
             borderColor: borderColor,
@@ -111,9 +129,14 @@ class _EmployeeCardState extends State<EmployeeCard>
       theme,
       l10n,
       isOnboarding: false,
+      isOffboarding: false,
       cardColor: theme.colorScheme.surfaceContainerLow,
       borderColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
     );
+  }
+
+  bool _shouldPulse(EmployeeCard card) {
+    return card.isOffboarding || !card.employee.isReady;
   }
 
   Widget _buildCardContainer(
@@ -121,6 +144,7 @@ class _EmployeeCardState extends State<EmployeeCard>
     ThemeData theme,
     L10n l10n, {
     required bool isOnboarding,
+    required bool isOffboarding,
     double glowOpacity = 0.0,
     required Color? cardColor,
     required Color borderColor,
@@ -128,6 +152,7 @@ class _EmployeeCardState extends State<EmployeeCard>
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
+        color: cardColor,
         gradient: isOnboarding
             ? LinearGradient(
                 begin: Alignment.topLeft,
@@ -138,6 +163,20 @@ class _EmployeeCardState extends State<EmployeeCard>
                   Colors.orange.withValues(alpha: 0.03 + glowOpacity * 0.08),
                 ],
               )
+            : isOffboarding
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.error.withValues(
+                        alpha: 0.06 + glowOpacity * 0.12,
+                      ),
+                      theme.colorScheme.surfaceContainerLow,
+                      theme.colorScheme.errorContainer.withValues(
+                        alpha: 0.08 + glowOpacity * 0.1,
+                      ),
+                    ],
+                  )
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -161,6 +200,22 @@ class _EmployeeCardState extends State<EmployeeCard>
                   offset: const Offset(0, 4),
                 ),
               ]
+            : isOffboarding
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.error.withValues(
+                        alpha: glowOpacity * 0.6,
+                      ),
+                      blurRadius: 24,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withAlpha(12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
             : [
                 BoxShadow(
                   color: theme.colorScheme.primary.withValues(alpha: 0.06),
@@ -211,7 +266,7 @@ class _EmployeeCardState extends State<EmployeeCard>
                         widget.employee.displayName,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: isOnboarding
+                          color: (isOnboarding || isOffboarding)
                               ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
                               : null,
                         ),
@@ -252,7 +307,8 @@ class _EmployeeCardState extends State<EmployeeCard>
   }
 
   Widget _buildAvatar(BuildContext context, ThemeData theme) {
-    final isOnboarding = !widget.employee.isReady;
+    final isOffboarding = widget.isOffboarding;
+    final isOnboarding = !widget.employee.isReady && !isOffboarding;
 
     return SizedBox(
       width: 56,
@@ -270,15 +326,28 @@ class _EmployeeCardState extends State<EmployeeCard>
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: isOnboarding
+                      colors: isOffboarding
                           ? [
-                              Colors.orange.withValues(alpha: 0.3 + _pulseAnimation.value * 0.3),
-                              Colors.deepOrange.withValues(alpha: 0.2 + _pulseAnimation.value * 0.2),
+                              theme.colorScheme.error.withValues(
+                                alpha: 0.25 + _pulseAnimation.value * 0.25,
+                              ),
+                              theme.colorScheme.errorContainer.withValues(
+                                alpha: 0.2 + _pulseAnimation.value * 0.2,
+                              ),
                             ]
-                          : [
-                              theme.colorScheme.primary.withValues(alpha: 0.15),
-                              theme.colorScheme.secondary.withValues(alpha: 0.1),
-                            ],
+                          : isOnboarding
+                              ? [
+                                  Colors.orange.withValues(
+                                    alpha: 0.3 + _pulseAnimation.value * 0.3,
+                                  ),
+                                  Colors.deepOrange.withValues(
+                                    alpha: 0.2 + _pulseAnimation.value * 0.2,
+                                  ),
+                                ]
+                              : [
+                                  theme.colorScheme.primary.withValues(alpha: 0.15),
+                                  theme.colorScheme.secondary.withValues(alpha: 0.1),
+                                ],
                     ),
                   ),
                 );
@@ -317,7 +386,7 @@ class _EmployeeCardState extends State<EmployeeCard>
                         widget.employee.avatarUrl!.isNotEmpty
                     ? ClipOval(
                         child: Opacity(
-                          opacity: isOnboarding ? 0.75 : 1.0,
+                          opacity: (isOnboarding || isOffboarding) ? 0.75 : 1.0,
                           child: CustomNetworkImage(
                             widget.employee.avatarUrl!,
                             fit: BoxFit.cover,
@@ -351,7 +420,7 @@ class _EmployeeCardState extends State<EmployeeCard>
 
   Widget _buildWorkStatusDot(ThemeData theme) {
     // 入职中状态下不显示工作状态点
-    if (!widget.employee.isReady) {
+    if (!widget.employee.isReady || widget.isOffboarding) {
       return const SizedBox.shrink();
     }
 
@@ -385,6 +454,9 @@ class _EmployeeCardState extends State<EmployeeCard>
 
   String _getWorkStatusText(L10n l10n) {
     // 入职中状态下显示不同文案
+    if (widget.isOffboarding) {
+      return '${l10n.deleteEmployee}...';
+    }
     if (!widget.employee.isReady) {
       return l10n.employeeOnboarding;
     }
@@ -402,6 +474,41 @@ class _EmployeeCardState extends State<EmployeeCard>
   }
 
   Widget _buildStatusBadge(BuildContext context, ThemeData theme, L10n l10n) {
+    if (widget.isOffboarding) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.error.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: theme.colorScheme.error,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${l10n.deleteEmployee}...',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (!widget.employee.isReady) {
       // 入职中状态 - 带脉冲效果
       return AnimatedBuilder(
