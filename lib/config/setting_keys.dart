@@ -21,6 +21,8 @@ enum AppSettings<T> {
   showNoGoogle<bool>('com.psygo.show_no_google', false),
   unifiedPushRegistered<bool>('com.psygo.unifiedpush.registered', false),
   unifiedPushEndpoint<String>('com.psygo.unifiedpush.endpoint', ''),
+  aliyunPushDeviceId<String>('com.psygo.aliyunpush.device_id', ''),
+  aliyunPushPushKey<String>('com.psygo.aliyunpush.push_key', ''),
   pushNotificationsGatewayUrl<String>(
     'pushNotificationsGatewayUrl',
     'https://push.automate.app/_matrix/push/v1/notify',
