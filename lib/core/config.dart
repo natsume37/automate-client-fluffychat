@@ -34,7 +34,7 @@ class PsygoConfig {
 
   /// HTTP 超时配置
   static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 120);
 
   /// LLM 默认配置
   static const String defaultLLMProvider = 'openrouter';
