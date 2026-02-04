@@ -93,40 +93,42 @@ class ImageBubble extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: [
-        Material(
-          color: Colors.transparent,
-          clipBehavior: Clip.hardEdge,
-          shape: RoundedRectangleBorder(
-            borderRadius: borderRadius,
-            side: BorderSide(
-              color: event.messageType == MessageTypes.Sticker
-                  ? Colors.transparent
-                  : theme.dividerColor,
+    return RepaintBoundary(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 8,
+        children: [
+          Material(
+            color: Colors.transparent,
+            clipBehavior: Clip.hardEdge,
+            shape: RoundedRectangleBorder(
+              borderRadius: borderRadius,
+              side: BorderSide(
+                color: event.messageType == MessageTypes.Sticker
+                    ? Colors.transparent
+                    : theme.dividerColor,
+              ),
             ),
-          ),
-          child: InkWell(
-            onTap: () => _onTap(context),
-            borderRadius: borderRadius,
-            child: Hero(
-              tag: event.eventId,
-              child: MxcImage(
-                event: event,
-                width: width,
-                height: height,
-                fit: fit,
-                animated: animated,
-                isThumbnail: thumbnailOnly,
-                placeholder: event.messageType == MessageTypes.Sticker
-                    ? null
-                    : _buildPlaceholder,
+            child: InkWell(
+              onTap: () => _onTap(context),
+              borderRadius: borderRadius,
+              child: Hero(
+                tag: event.eventId,
+                child: MxcImage(
+                  event: event,
+                  cacheKey: 'msg:${event.eventId}:${width.round()}x${height.round()}:${thumbnailOnly ? 't' : 'f'}',
+                  width: width,
+                  height: height,
+                  fit: fit,
+                  animated: animated,
+                  isThumbnail: thumbnailOnly,
+                  placeholder: event.messageType == MessageTypes.Sticker
+                      ? null
+                      : _buildPlaceholder,
+                ),
               ),
             ),
           ),
-        ),
         if (fileDescription != null && textColor != null)
           SizedBox(
             width: width,
@@ -155,7 +157,8 @@ class ImageBubble extends StatelessWidget {
               ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

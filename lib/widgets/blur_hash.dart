@@ -5,6 +5,18 @@ import 'package:blurhash_dart/blurhash_dart.dart' as b;
 import 'package:image/image.dart' as image;
 
 class BlurHash extends StatefulWidget {
+  /// 全局 BlurHash 缓存，避免重复计算
+  static final Map<String, Uint8List> _globalCache = {};
+
+  /// 正在计算中的 Future，避免重复计算
+  static final Map<String, Future<Uint8List>> _pendingFutures = {};
+
+  /// 清除缓存
+  static void clearCache() {
+    _globalCache.clear();
+    _pendingFutures.clear();
+  }
+
   final double width;
   final double height;
   final String blurhash;
@@ -24,57 +36,122 @@ class BlurHash extends StatefulWidget {
 
 class _BlurHashState extends State<BlurHash> {
   Uint8List? _data;
+  bool _isLoading = false;
 
-  static Future<Uint8List> getBlurhashData(
-    BlurhashData blurhashData,
-  ) async {
-    final blurhash = b.BlurHash.decode(blurhashData.hsh);
-    final img = blurhash.toImage(blurhashData.w, blurhashData.h);
+  /// 生成缓存 key
+  String get _cacheKey {
+    final ratio = widget.width / widget.height;
+    var w = 32;
+    var h = 32;
+    if (ratio > 1.0) {
+      h = (w / ratio).round();
+    } else {
+      w = (h * ratio).round();
+    }
+    return '${widget.blurhash}_${w}x$h';
+  }
+
+  static Future<Uint8List> _decodeBlurhash(BlurhashData data) async {
+    final blurhash = b.BlurHash.decode(data.hsh);
+    final img = blurhash.toImage(data.w, data.h);
     return Uint8List.fromList(image.encodePng(img));
   }
 
-  Future<Uint8List?> _computeBlurhashData() async {
-    if (_data != null) return _data!;
-    final ratio = widget.width / widget.height;
-    var width = 32;
-    var height = 32;
-    if (ratio > 1.0) {
-      height = (width / ratio).round();
-    } else {
-      width = (height * ratio).round();
+  @override
+  void initState() {
+    super.initState();
+    _loadBlurhash();
+  }
+
+  @override
+  void didUpdateWidget(BlurHash oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.blurhash != widget.blurhash ||
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height) {
+      _loadBlurhash();
+    }
+  }
+
+  void _loadBlurhash() {
+    final cacheKey = _cacheKey;
+
+    // 1. 检查全局缓存
+    final cached = BlurHash._globalCache[cacheKey];
+    if (cached != null) {
+      _data = cached;
+      return;
     }
 
-    return _data ??= await compute(
-      getBlurhashData,
-      BlurhashData(
-        hsh: widget.blurhash,
-        w: width,
-        h: height,
-      ),
+    // 2. 检查是否已经在计算中
+    final pending = BlurHash._pendingFutures[cacheKey];
+    if (pending != null) {
+      _isLoading = true;
+      pending.then((data) {
+        if (mounted) {
+          setState(() {
+            _data = data;
+            _isLoading = false;
+          });
+        }
+      });
+      return;
+    }
+
+    // 3. 开始新的计算
+    _isLoading = true;
+    final ratio = widget.width / widget.height;
+    var w = 32;
+    var h = 32;
+    if (ratio > 1.0) {
+      h = (w / ratio).round();
+    } else {
+      w = (h * ratio).round();
+    }
+
+    final future = compute(
+      _decodeBlurhash,
+      BlurhashData(hsh: widget.blurhash, w: w, h: h),
     );
+
+    BlurHash._pendingFutures[cacheKey] = future;
+
+    future.then((data) {
+      BlurHash._globalCache[cacheKey] = data;
+      BlurHash._pendingFutures.remove(cacheKey);
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _isLoading = false;
+        });
+      }
+    }).catchError((e) {
+      BlurHash._pendingFutures.remove(cacheKey);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Uint8List?>(
-      future: _computeBlurhashData(),
-      initialData: _data,
-      builder: (context, snapshot) {
-        final data = snapshot.data;
-        if (data == null) {
-          return Container(
-            width: widget.width,
-            height: widget.height,
-            color: Theme.of(context).colorScheme.onInverseSurface,
-          );
-        }
-        return Image.memory(
-          data,
-          fit: widget.fit,
-          width: widget.width,
-          height: widget.height,
-        );
-      },
+    final data = _data;
+    if (data == null) {
+      return Container(
+        width: widget.width,
+        height: widget.height,
+        color: Theme.of(context).colorScheme.onInverseSurface,
+      );
+    }
+    return Image.memory(
+      data,
+      fit: widget.fit,
+      width: widget.width,
+      height: widget.height,
+      // 禁用 gapless playback 以减少内存压力
+      gaplessPlayback: true,
     );
   }
 }
