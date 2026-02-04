@@ -187,7 +187,20 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
     // 如果是私聊，获取对方用户的头像
     if (directChatMatrixID != null) {
-      // 优先使用员工头像
+      // 优先使用已加载的员工数据（来自轮询 API，数据更新）
+      if (_employee != null && _employee!.avatarUrl != null && _employee!.avatarUrl!.isNotEmpty) {
+        try {
+          final avatarUri = Uri.parse(_employee!.avatarUrl!);
+          return Avatar(
+            mxContent: avatarUri,
+            name: _employee!.displayName,
+            size: 32,
+          );
+        } catch (_) {
+          // URI 解析失败，继续 fallback
+        }
+      }
+      // 其次从 AgentService 缓存获取员工头像
       final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixID);
       if (agentAvatarUri != null) {
         final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 
+import '../core/api_client.dart';
 import '../models/agent_template.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
+import '../utils/localized_exception_extension.dart';
 import 'custom_network_image.dart';
 
 /// 雇佣对话框
@@ -25,7 +27,6 @@ class HireDialog extends StatefulWidget {
 
 class _HireDialogState extends State<HireDialog> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _invitationCodeController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
   bool _isLoading = false;
@@ -58,7 +59,6 @@ class _HireDialogState extends State<HireDialog> {
   @override
   void dispose() {
     _nameController.dispose();
-    _invitationCodeController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -66,7 +66,6 @@ class _HireDialogState extends State<HireDialog> {
   Future<void> _onConfirm() async {
     if (_isLoading) return;
     final name = _nameController.text.trim();
-    final invitationCode = _invitationCodeController.text.trim();
 
     if (name.isEmpty) {
       setState(() {
@@ -82,30 +81,36 @@ class _HireDialogState extends State<HireDialog> {
       return;
     }
 
-    if (invitationCode.isEmpty) {
-      setState(() {
-        _error = L10n.of(context).invitationCodeRequired;
-      });
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
-    // 调用统一创建接口（异步），先返回 UI 结果让入职动画接管
-    final responseFuture = widget.repository.hireFromTemplate(
-      widget.template.id,
-      name,
-      invitationCode: invitationCode,
-    );
-    if (mounted) {
+    try {
+      final response = await widget.repository.hireFromTemplate(
+        widget.template.id,
+        name,
+        avatarUrl: widget.template.avatarUrl,
+      );
+      if (!mounted) return;
       Navigator.of(context).pop(HireResult(
-        responseFuture: responseFuture,
+        responseFuture: Future.value(response),
         displayName: name,
       ));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _formatError(e);
+        _isLoading = false;
+      });
     }
+  }
+
+  String _formatError(Object error) {
+    if (error is ApiException) {
+      return error.message;
+    }
+    return error.toLocalizedString(context, ExceptionContext.hireEmployee);
   }
 
   @override
@@ -199,50 +204,12 @@ class _HireDialogState extends State<HireDialog> {
                     vertical: 16,
                   ),
                 ),
-                textInputAction: TextInputAction.next,
+                textInputAction: TextInputAction.done,
                 enabled: !_isLoading,
                 onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _onConfirm(),
               ),
               const SizedBox(height: 16),
-
-              // 邀请码输入
-              TextField(
-                controller: _invitationCodeController,
-                decoration: InputDecoration(
-                  labelText: l10n.invitationCode,
-                  hintText: l10n.enterInvitationCode,
-                  prefixIcon: Icon(
-                    Icons.vpn_key_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.outlineVariant.withAlpha(80),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerLow,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _onConfirm(),
-                enabled: !_isLoading,
-              ),
 
               // 错误提示
               if (_error != null) ...[

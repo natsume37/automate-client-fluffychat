@@ -55,23 +55,23 @@ class AgentTemplateRepository {
   ///
   /// [templateId] 模板 ID
   /// [name] 员工名称（用户输入）
-  /// [invitationCode] 邀请码（开发环境可传空字符串，会自动跳过校验）
   /// [userRules] 额外规则/个性化描述（可选）
+  /// [avatarUrl] 头像 URL（可选，通常从模板继承）
   ///
   /// 返回 [UnifiedCreateAgentResponse]，包含 agentId、matrixUserId 等信息
   Future<UnifiedCreateAgentResponse> hireFromTemplate(
     int templateId,
     String name, {
-    String invitationCode = '', // 开发环境可传空
     String? userRules,
+    String? avatarUrl,
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
       body: UnifiedCreateAgentRequest(
         name: name,
-        invitationCode: invitationCode,
         templateId: templateId,
         userRules: userRules,
+        avatarUrl: avatarUrl,
       ).toJson(),
       fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
@@ -88,13 +88,11 @@ class AgentTemplateRepository {
   Future<UnifiedCreateAgentResponse> createCustomAgent({
     required String name,
     String? systemPrompt,
-    String invitationCode = '',
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
       body: UnifiedCreateAgentRequest(
         name: name,
-        invitationCode: invitationCode,
         systemPrompt: systemPrompt,
         // 不指定 templateId，后端会创建空白 Agent
       ).toJson(),
@@ -116,14 +114,12 @@ class AgentTemplateRepository {
     required String name,
     String? systemPrompt,
     List<PluginConfig>? plugins,
-    String invitationCode = '',
     String? avatarUrl,
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
       body: UnifiedCreateAgentRequest(
         name: name,
-        invitationCode: invitationCode,
         systemPrompt: systemPrompt,
         plugins: plugins,
         avatarUrl: avatarUrl,
