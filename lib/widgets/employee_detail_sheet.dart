@@ -137,7 +137,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         setState(() => _isUpdatingStyle = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${L10n.of(context).updateFailed}: $e'),
+            content: Text(L10n.of(context).updateFailed),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
           ),

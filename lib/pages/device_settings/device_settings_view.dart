@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/device_settings/device_settings.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'user_device_list_item.dart';
 
@@ -30,7 +31,7 @@ class DevicesSettingsView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     const Icon(Icons.error_outlined),
-                    Text(snapshot.error.toString()),
+                    Text(snapshot.error!.toLocalizedString(context)),
                   ],
                 ),
               );

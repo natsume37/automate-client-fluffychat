@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/utils/custom_http_client.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 版本跳过存储 key
@@ -321,8 +322,9 @@ class AppUpdateService {
       }
       // 检查失败时不阻止用户使用，但如果是手动检查则显示错误
       if (showNoUpdateHint && context.mounted) {
+        final message = (e as Object).toLocalizedString(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('检查更新失败: $e')),
+          SnackBar(content: Text('检查更新失败: $message')),
         );
       }
       return true;
@@ -702,7 +704,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       if (result.type != ResultType.done) {
         // 打开失败
         setState(() {
-          _errorMessage = '无法打开文件: ${result.message}';
+          _errorMessage = '无法打开文件，请稍后重试';
         });
         return;
       }
@@ -713,7 +715,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '无法打开文件: $e';
+        _errorMessage = '无法打开文件，请稍后重试';
       });
     }
   }

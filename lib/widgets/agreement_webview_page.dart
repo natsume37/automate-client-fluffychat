@@ -76,7 +76,7 @@ class _AgreementWebViewPageState extends State<AgreementWebViewPage> {
           onWebResourceError: (error) {
             setState(() {
               _isLoading = false;
-              _errorMessage = '加载失败: ${error.description}';
+              _errorMessage = '加载失败，请稍后重试';
             });
           },
           onNavigationRequest: (request) {

@@ -8,6 +8,7 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat/events/map_bubble.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 
@@ -102,8 +103,11 @@ class SendLocationDialogState extends State<SendLocationDialog> {
     } else if (denied) {
       contentWidget = Text(L10n.of(context).locationPermissionDeniedNotice);
     } else if (error != null) {
-      contentWidget =
-          Text(L10n.of(context).errorObtainingLocation(error.toString()));
+      final message = error!.toLocalizedString(
+        context,
+        ExceptionContext.getLocation,
+      );
+      contentWidget = Text(L10n.of(context).errorObtainingLocation(message));
     } else {
       contentWidget = Row(
         mainAxisSize: MainAxisSize.min,

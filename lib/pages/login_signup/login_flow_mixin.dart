@@ -9,6 +9,7 @@ import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -125,7 +126,11 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除登录状态和 Matrix 客户端
       await _clearAuthState();
       if (mounted) {
-        setLoginError('登录失败: $e');
+        final message = (e as Object).toLocalizedString(
+          context,
+          ExceptionContext.matrixLogin,
+        );
+        setLoginError(message);
         setLoading(false);
       }
       return false;

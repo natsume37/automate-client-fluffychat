@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'login_signup_view.dart';
 
@@ -162,7 +163,10 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
       _isInAuthFlow = false;
       await OneClickLoginService.quitLoginPage();
       setState(() {
-        phoneError = e.toString();
+        phoneError = (e as Object).toLocalizedString(
+          context,
+          ExceptionContext.oneClickLogin,
+        );
         loading = false;
       });
     }

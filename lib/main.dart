@@ -278,7 +278,7 @@ class _IosStartupAppState extends State<_IosStartupApp> {
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
-          final errorText = snapshot.error?.toString() ?? 'Unknown error';
+          const errorText = '系统繁忙，请稍后重试';
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             home: _StartupErrorScreen(

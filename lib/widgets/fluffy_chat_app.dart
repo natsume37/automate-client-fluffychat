@@ -652,7 +652,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (error.contains('SDK初始化失败')) {
       return '初始化失败\n\n请检查：\n- 网络连接是否正常\n- 是否允许了网络权限\n\n如需修改权限，请点击"打开设置"';
     }
-    return error.replaceAll('Exception: ', '');
+    return '登录失败，请稍后重试';
   }
 
   Future<void> _loginMatrixAndProceed() async {

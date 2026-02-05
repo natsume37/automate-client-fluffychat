@@ -85,10 +85,20 @@ class LoginController extends State<Login> {
       // 注意：此页面是旧的 Matrix 密码登录，不再使用 Automate 认证
       // 新的登录流程使用 login_signup 页面和一键登录
     } on MatrixException catch (exception) {
-      setState(() => passwordError = exception.errorMessage);
+      setState(() {
+        passwordError = exception.toLocalizedString(
+          context,
+          ExceptionContext.matrixLogin,
+        );
+      });
       return setState(() => loading = false);
     } catch (exception) {
-      setState(() => passwordError = exception.toString());
+      setState(() {
+        passwordError = (exception as Object).toLocalizedString(
+          context,
+          ExceptionContext.matrixLogin,
+        );
+      });
       return setState(() => loading = false);
     }
 

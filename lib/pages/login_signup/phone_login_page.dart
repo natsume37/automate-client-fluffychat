@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -128,7 +129,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       }
     } catch (e) {
       setState(() {
-        phoneError = e.toString();
+        phoneError = (e as Object).toLocalizedString(
+          context,
+          ExceptionContext.requestVerifyCode,
+        );
         loading = false;
       });
     }
@@ -235,7 +239,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       debugPrint('验证码登录错误: $e');
       if (!mounted) return;
       setState(() {
-        codeError = (e is AutomateBackendException) ? e.message : e.toString();
+        codeError = (e as Object).toLocalizedString(
+          context,
+          ExceptionContext.verifyCode,
+        );
         loading = false;
       });
     }

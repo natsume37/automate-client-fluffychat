@@ -189,7 +189,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${L10n.of(context).trainingFailed}: $e'),
+            content: Text(L10n.of(context).trainingFailed),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Theme.of(context).colorScheme.error,
           ),

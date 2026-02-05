@@ -7,6 +7,7 @@ import 'package:http/http.dart';
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:psygo/backend/exceptions.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'uia_request_manager.dart';
@@ -38,6 +39,13 @@ extension LocalizedExceptionExtension on Object {
     if (this is OtherPartyCanNotReceiveMessages) {
       return L10n.of(context).otherPartyNotLoggedIn;
     }
+    if (this is AutomateBackendException) {
+      final exception = this as AutomateBackendException;
+      if (exception.statusCode == null) {
+        return L10n.of(context).noConnectionToTheServer;
+      }
+      return L10n.of(context).serverError;
+    }
     if (this is MatrixException) {
       switch ((this as MatrixException).error) {
         case MatrixError.M_FORBIDDEN:
@@ -51,7 +59,7 @@ extension LocalizedExceptionExtension on Object {
           if (exceptionContext == ExceptionContext.joinRoom) {
             return L10n.of(context).unableToJoinChat;
           }
-          return (this as MatrixException).errorMessage;
+          return L10n.of(context).serverError;
       }
     }
     if (this is InvalidPassphraseException) {

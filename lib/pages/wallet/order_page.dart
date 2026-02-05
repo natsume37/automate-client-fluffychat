@@ -213,7 +213,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
       if (!mounted) return;
 
       _updatePaymentState(PaymentState.idle);
-      _showSnackBar('${L10n.of(context).orderCreateFailed}: $e', isError: true);
+      _showSnackBar(L10n.of(context).orderCreateFailed, isError: true);
     }
   }
 

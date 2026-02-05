@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -104,9 +105,11 @@ class SettingsController extends State<Settings> {
       },
     );
 
-    if (success.error != null) {
+    final error = success.error;
+    if (error != null) {
+      final message = error.toLocalizedString(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('注销失败: ${success.error}')),
+        SnackBar(content: Text('注销失败: $message')),
       );
       return;
     }

@@ -9,6 +9,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_encryption_settings/chat_encryption_settings.dart';
 import 'package:psygo/utils/beautify_string_extension.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 
@@ -91,7 +92,7 @@ class ChatEncryptionSettingsView extends StatelessWidget {
                       if (snapshot.hasError) {
                         return Center(
                           child: Text(
-                            '${L10n.of(context).oopsSomethingWentWrong}: ${snapshot.error}',
+                            snapshot.error!.toLocalizedString(context),
                           ),
                         );
                       }
