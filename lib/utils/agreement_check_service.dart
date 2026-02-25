@@ -45,7 +45,8 @@ class AgreementCheckService {
   /// 带防抖的检查触发
   static void _triggerCheckWithDebounce() {
     final now = DateTime.now();
-    if (_lastCheckTime != null && now.difference(_lastCheckTime!) < _resumeDebounce) {
+    if (_lastCheckTime != null &&
+        now.difference(_lastCheckTime!) < _resumeDebounce) {
       return;
     }
     _lastCheckTime = now;
@@ -79,6 +80,11 @@ class AgreementCheckService {
   /// 静默检查协议状态（后台恢复时调用）
   Future<void> _silentCheck(BuildContext context) async {
     try {
+      final hasValidToken = await _apiClient.ensureValidToken();
+      if (!hasValidToken) {
+        debugPrint('[AgreementCheck] Skip check: no valid token');
+        return;
+      }
       final status = await _apiClient.getAgreementStatus();
 
       if (status.allAccepted) return;
@@ -96,6 +102,11 @@ class AgreementCheckService {
   /// 返回 true 表示可以继续，false 表示需要强制登出
   Future<bool> checkAndHandle(BuildContext context) async {
     try {
+      final hasValidToken = await _apiClient.ensureValidToken();
+      if (!hasValidToken) {
+        debugPrint('[AgreementCheck] Skip check: no valid token');
+        return true;
+      }
       final status = await _apiClient.getAgreementStatus();
 
       if (status.allAccepted) {
