@@ -3523,9 +3523,9 @@
 
   "startChat": "Start chat",
   "@startChat": {},
-  "deleteEmployee": "Optimize employee",
+  "deleteEmployee": "Dismiss employee",
   "@deleteEmployee": {},
-  "deleteEmployeeConfirm": "Are you sure you want to optimize {name}? This action cannot be undone.",
+  "deleteEmployeeConfirm": "Are you sure you want to dismiss {name}? This action cannot be undone.",
   "@deleteEmployeeConfirm": {
     "type": "String",
     "placeholders": {
@@ -3534,9 +3534,9 @@
       }
     }
   },
-  "employeeDeleted": "Employee optimized",
+  "employeeDeleted": "Employee dismissed",
   "@employeeDeleted": {},
-  "errorDeletingEmployee": "Error optimizing employee",
+  "errorDeletingEmployee": "Error dismissing employee",
   "@errorDeletingEmployee": {},
   "errorStartingChat": "Error starting chat",
   "@errorStartingChat": {},

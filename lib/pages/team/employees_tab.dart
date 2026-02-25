@@ -316,7 +316,7 @@ class EmployeesTabState extends State<EmployeesTab>
           ),
         ),
         const PopupMenuDivider(),
-        // 优化（删除）
+        // 辞退（删除）
         PopupMenuItem<String>(
           value: 'delete',
           enabled: deleteEnabled,
@@ -416,7 +416,7 @@ class EmployeesTabState extends State<EmployeesTab>
     }
   }
 
-  /// 确认优化对话框
+  /// 确认辞退对话框
   Future<void> _confirmDeleteEmployee(Agent employee) async {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
@@ -495,7 +495,7 @@ class EmployeesTabState extends State<EmployeesTab>
     }
   }
 
-  /// 优化员工
+  /// 辞退员工
   Future<void> _deleteEmployee(Agent employee) async {
     if (_deletingEmployees.contains(employee.agentId)) {
       return;
