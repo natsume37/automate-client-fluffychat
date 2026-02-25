@@ -21,7 +21,8 @@ dependencies:
   cross_file: ^0.3.5
   cupertino_icons: any
   desktop_drop: ^0.7.0
-  desktop_notifications: ^0.6.3
+  desktop_notifications:
+    path: third_party/desktop_notifications # Local patch: ignore duplicate action signals on Linux
   device_info_plus: ^12.2.0
   dio: ^5.9.0
   dynamic_color: ^1.8.1
