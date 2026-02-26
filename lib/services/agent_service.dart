@@ -79,8 +79,9 @@ class AgentService {
   void _rebuildMatrixUserIdMap() {
     _matrixUserIdToAgent.clear();
     for (final agent in _agents) {
-      if (agent.matrixUserId != null && agent.matrixUserId!.isNotEmpty) {
-        _matrixUserIdToAgent[agent.matrixUserId!] = agent;
+      final key = agent.matrixUserId?.trim() ?? '';
+      if (key.isNotEmpty) {
+        _matrixUserIdToAgent[key] = agent;
       }
     }
   }
@@ -102,8 +103,9 @@ class AgentService {
   /// 根据 Matrix User ID 查找员工
   /// 返回 null 表示不是员工
   Agent? getAgentByMatrixUserId(String? matrixUserId) {
-    if (matrixUserId == null || matrixUserId.isEmpty) return null;
-    return _matrixUserIdToAgent[matrixUserId];
+    final key = matrixUserId?.trim() ?? '';
+    if (key.isEmpty) return null;
+    return _matrixUserIdToAgent[key];
   }
 
   /// 检查 Matrix User ID 是否是员工
@@ -211,11 +213,18 @@ class AgentService {
     final index = _agents.indexWhere((a) => a.agentId == agent.agentId);
     if (index != -1) {
       _agents[index] = agent;
-      if (agent.matrixUserId != null && agent.matrixUserId!.isNotEmpty) {
-        _matrixUserIdToAgent[agent.matrixUserId!] = agent;
-      }
-      agentsNotifier.value = List.unmodifiable(_agents);
+    } else {
+      // Allow late discovery (e.g. direct chat page loads before AgentService.init finished).
+      _agents.add(agent);
     }
+
+    if (agent.matrixUserId != null && agent.matrixUserId!.isNotEmpty) {
+      final key = agent.matrixUserId!.trim();
+      if (key.isNotEmpty) {
+        _matrixUserIdToAgent[key] = agent;
+      }
+    }
+    agentsNotifier.value = List.unmodifiable(_agents);
   }
 
   /// 释放资源

@@ -164,6 +164,22 @@ class AgentRepository {
     );
   }
 
+  /// 获取 Agent Web 入口 URL（用于 WebView 展示）
+  ///
+  /// 返回一个相对路径，例如：/w/<agent_id>/?t=...
+  Future<String> getWebEntryUrl(String agentId) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/api/agents/$agentId/web-entry/url',
+      fromJsonT: (data) => data as Map<String, dynamic>,
+    );
+
+    final url = (response.data?['url'] as String?)?.trim() ?? '';
+    if (url.isEmpty) {
+      throw ApiException(-1, 'Missing web entry url');
+    }
+    return url;
+  }
+
   /// 释放资源
   void dispose() {
     _apiClient.dispose();

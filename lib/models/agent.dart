@@ -26,6 +26,9 @@ class Agent {
   /// 前端逻辑：isReady=false 时显示"入职中"，阻止用户交互
   final bool isReady;
 
+  /// Web 入口是否已开启（用于在私聊会话中展示/启用 WebView 按钮）
+  final bool webEntryEnabled;
+
   /// Agent 的 Matrix 账号 ID（如 @agent-1-abc:matrix.org）
   final String? matrixUserId;
 
@@ -49,6 +52,7 @@ class Agent {
     this.avatarUrl,
     required this.isActive,
     required this.isReady,
+    this.webEntryEnabled = false,
     this.matrixUserId,
     required this.createdAt,
     this.contractExpiresAt,
@@ -66,6 +70,7 @@ class Agent {
       avatarUrl: json['avatar_url'] as String?,
       isActive: json['is_active'] as bool? ?? false,
       isReady: json['is_ready'] as bool? ?? false,
+      webEntryEnabled: json['web_entry_enabled'] as bool? ?? false,
       matrixUserId: json['matrix_user_id'] as String?,
       createdAt: json['created_at'] as String,
       contractExpiresAt: json['contract_expires_at'] as String?,
@@ -84,6 +89,7 @@ class Agent {
       'avatar_url': avatarUrl,
       'is_active': isActive,
       'is_ready': isReady,
+      'web_entry_enabled': webEntryEnabled,
       'matrix_user_id': matrixUserId,
       'created_at': createdAt,
       'contract_expires_at': contractExpiresAt,
@@ -101,6 +107,7 @@ class Agent {
     String? avatarUrl,
     bool? isActive,
     bool? isReady,
+    bool? webEntryEnabled,
     String? matrixUserId,
     String? createdAt,
     String? contractExpiresAt,
@@ -115,6 +122,7 @@ class Agent {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isActive: isActive ?? this.isActive,
       isReady: isReady ?? this.isReady,
+      webEntryEnabled: webEntryEnabled ?? this.webEntryEnabled,
       matrixUserId: matrixUserId ?? this.matrixUserId,
       createdAt: createdAt ?? this.createdAt,
       contractExpiresAt: contractExpiresAt ?? this.contractExpiresAt,

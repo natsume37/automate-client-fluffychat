@@ -22,6 +22,7 @@ import 'package:psygo/utils/account_config.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/chat_settings_popup_menu.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/agent_web_entry_view.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/unread_rooms_badge.dart';
@@ -125,7 +126,37 @@ class ChatView extends StatelessWidget {
           ),
       ];
     } else if (!controller.room.isArchived) {
+      final directChatMatrixID = controller.room.directChatMatrixID;
       return [
+        if (directChatMatrixID != null)
+          ValueListenableBuilder<List<Agent>>(
+            valueListenable: AgentService.instance.agentsNotifier,
+            builder: (context, _, __) {
+              final agent = AgentService.instance
+                  .getAgentByMatrixUserId(directChatMatrixID);
+              if (agent == null) return const SizedBox.shrink();
+
+              return IconButton(
+                tooltip: controller.webEntryOpen ? '返回聊天' : '打开 WebView',
+                onPressed: controller.webEntryOpen || controller.webEntryLoading
+                    ? controller.closeWebEntry
+                    : (agent.webEntryEnabled
+                        ? () => controller.openWebEntry()
+                        : null),
+                icon: controller.webEntryLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        controller.webEntryOpen
+                            ? Icons.arrow_back
+                            : Icons.web_outlined,
+                      ),
+              );
+            },
+          ),
         if (AppSettings.experimentalVoip.value &&
             Matrix.of(context).voipPlugin != null &&
             controller.room.isDirectChat)
@@ -158,10 +189,14 @@ class ChatView extends StatelessWidget {
     return PopScope(
       canPop: controller.selectedEvents.isEmpty &&
           !controller.showEmojiPicker &&
-          controller.activeThreadId == null,
+          controller.activeThreadId == null &&
+          !controller.webEntryOpen &&
+          !controller.webEntryLoading,
       onPopInvokedWithResult: (pop, _) async {
         if (pop) return;
-        if (controller.selectedEvents.isNotEmpty) {
+        if (controller.webEntryOpen || controller.webEntryLoading) {
+          controller.closeWebEntry();
+        } else if (controller.selectedEvents.isNotEmpty) {
           controller.clearSelectedEvents();
         } else if (controller.showEmojiPicker) {
           controller.emojiPickerAction();
@@ -306,7 +341,8 @@ class ChatView extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.2),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -319,7 +355,8 @@ class ChatView extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           foregroundColor: theme.colorScheme.primary,
                           elevation: 0,
-                          child: const Icon(Icons.arrow_downward_rounded, size: 20),
+                          child: const Icon(Icons.arrow_downward_rounded,
+                              size: 20),
                         ),
                       ),
                     )
@@ -353,51 +390,65 @@ class ChatView extends StatelessWidget {
                       child: Column(
                         children: <Widget>[
                           Expanded(
-                            child: Stack(
-                              children: [
-                                GestureDetector(
-                                  onTap: controller.clearSingleSelectedEvent,
-                                  child: ChatEventList(controller: controller),
-                                ),
-                                // Scroll to last read position button
-                                if (controller.readMarkerEventId.isNotEmpty)
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: Material(
-                                      color: theme.colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: InkWell(
-                                        onTap: controller.scrollToReadMarker,
-                                        borderRadius: BorderRadius.circular(20),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.arrow_upward,
-                                                size: 16,
-                                                color: theme.colorScheme.onPrimaryContainer,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              const Text(
-                                                '新消息',
-                                                style: TextStyle(
-                                                  fontSize: 12,
+                            child: controller.webEntryOpen &&
+                                    controller.webEntryUrl != null
+                                ? AgentWebEntryView(
+                                    url: controller.webEntryUrl!)
+                                : Stack(
+                                    children: [
+                                      GestureDetector(
+                                        onTap:
+                                            controller.clearSingleSelectedEvent,
+                                        child: ChatEventList(
+                                            controller: controller),
+                                      ),
+                                      // Scroll to last read position button
+                                      if (controller
+                                          .readMarkerEventId.isNotEmpty)
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: Material(
+                                            color: theme
+                                                .colorScheme.primaryContainer,
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            child: InkWell(
+                                              onTap:
+                                                  controller.scrollToReadMarker,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.arrow_upward,
+                                                      size: 16,
+                                                      color: theme.colorScheme
+                                                          .onPrimaryContainer,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    const Text(
+                                                      '新消息',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                    ],
                                   ),
-                              ],
-                            ),
                           ),
                           if (controller.showScrollDownButton)
                             Divider(
@@ -425,66 +476,79 @@ class ChatView extends StatelessWidget {
                                           top: bottomSheetPadding,
                                           left: 60.0,
                                           right: 60.0,
-                                          bottom: 4,  // 减小底部间距
+                                          bottom: 4, // 减小底部间距
                                         )
                                       : EdgeInsets.only(
                                           top: bottomSheetPadding,
                                           left: bottomSheetPadding,
                                           right: bottomSheetPadding,
-                                          bottom: 4,  // 减小底部间距
+                                          bottom: 4, // 减小底部间距
                                         ),
                                   constraints: PlatformInfos.isDesktop
-                                      ? null  // PC 端不限制宽度，动态适应
+                                      ? null // PC 端不限制宽度，动态适应
                                       : const BoxConstraints(
-                                          maxWidth: FluffyThemes.maxTimelineWidth,
+                                          maxWidth:
+                                              FluffyThemes.maxTimelineWidth,
                                         ),
                                   alignment: PlatformInfos.isDesktop
-                                      ? null  // PC 端不居中
+                                      ? null // PC 端不居中
                                       : Alignment.center,
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Material(
                                         clipBehavior: Clip.hardEdge,
-                                        color: controller.selectedEvents.isNotEmpty
-                                            ? theme.colorScheme.tertiaryContainer
-                                            : theme.colorScheme.surfaceContainerHigh,
+                                        color:
+                                            controller.selectedEvents.isNotEmpty
+                                                ? theme.colorScheme
+                                                    .tertiaryContainer
+                                                : theme.colorScheme
+                                                    .surfaceContainerHigh,
                                         borderRadius: const BorderRadius.all(
                                           Radius.circular(24),
                                         ),
-                                        child: controller.room.isAbandonedDMRoom == true
+                                        child: controller
+                                                    .room.isAbandonedDMRoom ==
+                                                true
                                             ? Row(
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment.spaceEvenly,
+                                                    MainAxisAlignment
+                                                        .spaceEvenly,
                                                 children: [
                                                   TextButton.icon(
                                                     style: TextButton.styleFrom(
-                                                      padding: const EdgeInsets.all(
+                                                      padding:
+                                                          const EdgeInsets.all(
                                                         16,
                                                       ),
-                                                      foregroundColor:
-                                                          theme.colorScheme.error,
+                                                      foregroundColor: theme
+                                                          .colorScheme.error,
                                                     ),
                                                     icon: const Icon(
                                                       Icons.archive_outlined,
                                                     ),
-                                                    onPressed: controller.leaveChat,
+                                                    onPressed:
+                                                        controller.leaveChat,
                                                     label: Text(
-                                                      L10n.of(context).declineInvitation,
+                                                      L10n.of(context)
+                                                          .declineInvitation,
                                                     ),
                                                   ),
                                                   TextButton.icon(
                                                     style: TextButton.styleFrom(
-                                                      padding: const EdgeInsets.all(
+                                                      padding:
+                                                          const EdgeInsets.all(
                                                         16,
                                                       ),
                                                     ),
                                                     icon: const Icon(
                                                       Icons.forum_outlined,
                                                     ),
-                                                    onPressed: controller.recreateChat,
+                                                    onPressed:
+                                                        controller.recreateChat,
                                                     label: Text(
-                                                      L10n.of(context).reopenChat,
+                                                      L10n.of(context)
+                                                          .reopenChat,
                                                     ),
                                                   ),
                                                 ],
@@ -499,7 +563,8 @@ class ChatView extends StatelessWidget {
                                               ),
                                       ),
                                       // AI 内容免责声明（在 Material 外面，但在 Container margin 里面）
-                                      _AiContentDisclaimer(room: controller.room),
+                                      _AiContentDisclaimer(
+                                          room: controller.room),
                                     ],
                                   ),
                                 ),
@@ -565,7 +630,8 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
     if (directChatMatrixID == null) return;
 
     // 从缓存中快速查找（用于立即显示）
-    final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    final cachedEmployee =
+        AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
     if (cachedEmployee != null) {
       setState(() => _employee = cachedEmployee);
     } else {
@@ -578,7 +644,8 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent = page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
+      final agent =
+          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
       if (mounted && agent != null) {
         setState(() => _employee = agent);
       }
