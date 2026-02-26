@@ -19,6 +19,7 @@ class WindowService {
   static const String _trayEventLeftDoubleClick = 'leftMouseDblClk';
   static const String _trayEventRightUp = 'rightMouseUp';
   static StatusNotifierItemClient? _linuxTrayClient;
+  static bool _linuxTrayViaSni = false;
   static const Duration _linuxTrayLeftClickDelay = Duration(milliseconds: 80);
   static int _linuxTrayShowToken = 0;
   static bool? _isGnomeDesktopCache;
@@ -36,10 +37,21 @@ class WindowService {
 
     try {
       if (Platform.isLinux) {
-        await _initLinuxTray();
-        _trayInitialized = true;
-        debugPrint('[WindowService] System tray initialized');
-        return;
+        try {
+          await _initLinuxTray();
+          _linuxTrayViaSni = true;
+          _trayInitialized = true;
+          debugPrint('[WindowService] System tray initialized (SNI)');
+          return;
+        } catch (e) {
+          debugPrint(
+              '[WindowService] Linux SNI tray init failed, fallback to appindicator: $e');
+          try {
+            await _linuxTrayClient?.close();
+          } catch (_) {}
+          _linuxTrayClient = null;
+          _linuxTrayViaSni = false;
+        }
       }
 
       // 设置托盘图标
@@ -97,6 +109,7 @@ class WindowService {
           showWindow();
         }
       });
+      _linuxTrayViaSni = false;
       _trayInitialized = true;
       debugPrint('[WindowService] System tray initialized');
     } catch (e) {
@@ -108,14 +121,16 @@ class WindowService {
   static Future<void> destroySystemTray() async {
     if (!PlatformInfos.isDesktop || !_trayInitialized) return;
 
-    if (Platform.isLinux) {
+    if (Platform.isLinux && _linuxTrayViaSni) {
       await _linuxTrayClient?.close();
       _linuxTrayClient = null;
+      _linuxTrayViaSni = false;
       _trayInitialized = false;
       return;
     }
 
     await _systemTray.setSystemTrayInfo(iconPath: '');
+    _linuxTrayViaSni = false;
     _trayInitialized = false;
   }
 
