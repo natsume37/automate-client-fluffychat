@@ -47,7 +47,7 @@ class CustomNetworkImage extends StatelessWidget {
           : (context, _) => loadingBuilder!(
                 context,
                 const SizedBox.shrink(),
-                ImageChunkEvent(
+                const ImageChunkEvent(
                   cumulativeBytesLoaded: 0,
                   expectedTotalBytes: 1,
                 ),
