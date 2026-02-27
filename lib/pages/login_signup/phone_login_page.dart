@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
@@ -93,17 +94,18 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   }
 
   void requestVerificationCode() async {
+    final l10n = L10n.of(context);
     if (!await _ensureEulaAccepted()) {
       return;
     }
 
     if (phoneController.text.isEmpty) {
-      setState(() => phoneError = '请输入您的手机号');
+      setState(() => phoneError = l10n.authPhoneRequired);
       return;
     }
 
     if (!phoneController.text.isPhoneNumber) {
-      setState(() => phoneError = '请输入正确的手机号');
+      setState(() => phoneError = l10n.authPhoneInvalid);
       return;
     }
 
@@ -114,6 +116,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
     try {
       await backend.sendVerificationCode(phoneController.text);
+      if (!mounted) return;
 
       setState(() {
         codeSent = true;
@@ -124,12 +127,11 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       // 启动倒计时
       _startCountdown();
 
-      if (mounted) {
-        _showSuccessToast('验证码已发送，请注意查收');
-      }
+      _showSuccessToast(l10n.authCodeSentToast);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        phoneError = (e as Object).toLocalizedString(
+        phoneError = e.toLocalizedString(
           context,
           ExceptionContext.requestVerifyCode,
         );
@@ -142,7 +144,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   void _showSuccessToast(String message) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+    final accentColor =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -176,9 +179,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             ],
           ),
         ),
-        backgroundColor: isDark
-            ? const Color(0xFF00B386)
-            : accentColor,
+        backgroundColor: isDark ? const Color(0xFF00B386) : accentColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -194,6 +195,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   void _startCountdown() {
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (countdown > 0) {
         setState(() {
           countdown--;
@@ -206,17 +211,18 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
   /// 验证码登录
   void verifyAndLogin() async {
+    final l10n = L10n.of(context);
     if (!await _ensureEulaAccepted()) {
       return;
     }
 
     if (phoneController.text.isEmpty) {
-      setState(() => phoneError = '请输入您的手机号');
+      setState(() => phoneError = l10n.authPhoneRequired);
       return;
     }
 
     if (codeController.text.isEmpty) {
-      setState(() => codeError = '请输入验证码');
+      setState(() => codeError = l10n.authCodeRequired);
       return;
     }
 
@@ -239,7 +245,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       debugPrint('验证码登录错误: $e');
       if (!mounted) return;
       setState(() {
-        codeError = (e as Object).toLocalizedString(
+        codeError = e.toLocalizedString(
           context,
           ExceptionContext.verifyCode,
         );
@@ -251,10 +257,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   Future<bool> _ensureEulaAccepted() async {
     if (agreedToEula) return true;
 
+    final l10n = L10n.of(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+    final accentColor =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
     final shouldAccept = await showModalBottomSheet<bool>(
       context: context,
@@ -321,7 +329,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
                   // 标题
                   Text(
-                    '服务协议与隐私政策',
+                    l10n.authServiceAgreementTitle,
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -335,7 +343,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                   // 说明文字
                   Text.rich(
                     TextSpan(
-                      text: '请您务必审慎阅读、充分理解',
+                      text: l10n.authAgreementReadHint,
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark
@@ -348,7 +356,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                           alignment: PlaceholderAlignment.baseline,
                           baseline: TextBaseline.alphabetic,
                           child: _ClickableLink(
-                            text: '《用户协议》',
+                            text: l10n.authTermsOfService,
                             accentColor: accentColor,
                             onTap: () {
                               Navigator.of(context).pop(false);
@@ -356,12 +364,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                             },
                           ),
                         ),
-                        const TextSpan(text: '和'),
+                        TextSpan(text: l10n.authAgreementAnd),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.baseline,
                           baseline: TextBaseline.alphabetic,
                           child: _ClickableLink(
-                            text: '《隐私政策》',
+                            text: l10n.authPrivacyPolicy,
                             accentColor: accentColor,
                             onTap: () {
                               Navigator.of(context).pop(false);
@@ -369,7 +377,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                             },
                           ),
                         ),
-                        const TextSpan(text: '各条款。点击"同意并继续"代表您已阅读并同意全部内容。'),
+                        TextSpan(text: l10n.authAgreementConsentSuffix),
                       ],
                     ),
                     textAlign: TextAlign.center,
@@ -395,8 +403,9 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: (isDark ? const Color(0xFF00D3A1) : accentColor)
-                              .withValues(alpha: 0.3),
+                          color:
+                              (isDark ? const Color(0xFF00D3A1) : accentColor)
+                                  .withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 4),
                         ),
@@ -410,8 +419,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           alignment: Alignment.center,
-                          child: const Text(
-                            '同意并继续',
+                          child: Text(
+                            l10n.authAgreeAndContinue,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -433,8 +442,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                           ? Colors.white.withValues(alpha: 0.5)
                           : const Color(0xFF999999),
                     ),
-                    child: const Text(
-                      '不同意',
+                    child: Text(
+                      l10n.authDisagree,
                       style: TextStyle(fontSize: 15),
                     ),
                   ),
@@ -456,31 +465,35 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   }
 
   void showEula() async {
+    final l10n = L10n.of(context);
     if (_termsUrl == null) {
       // URL 未加载，尝试重新加载
       await _loadAgreements();
       if (_termsUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法加载用户协议，请检查网络连接')),
+          SnackBar(content: Text(l10n.authAgreementLoadFailedTerms)),
         );
         return;
       }
     }
-    await AgreementWebViewPage.open(context, '用户协议', _termsUrl!);
+    await AgreementWebViewPage.open(
+        context, l10n.authTermsOfService, _termsUrl!);
   }
 
   void showPrivacyPolicy() async {
+    final l10n = L10n.of(context);
     if (_privacyUrl == null) {
       // URL 未加载，尝试重新加载
       await _loadAgreements();
       if (_privacyUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法加载隐私政策，请检查网络连接')),
+          SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
         );
         return;
       }
     }
-    await AgreementWebViewPage.open(context, '隐私政策', _privacyUrl!);
+    await AgreementWebViewPage.open(
+        context, l10n.authPrivacyPolicy, _privacyUrl!);
   }
 
   @override
@@ -520,12 +533,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
 
           // Logo 尺寸响应式 - 更大 Logo
-          final logoSize = isExtraSmallScreen ? 100.0
-              : (isSmallScreen ? 110.0
-              : (isMediumScreen ? 120.0 : 130.0));
-          final logoImageHeight = isExtraSmallScreen ? 55.0
-              : (isSmallScreen ? 60.0
-              : (isMediumScreen ? 65.0 : 70.0));
+          final logoSize = isExtraSmallScreen
+              ? 100.0
+              : (isSmallScreen ? 110.0 : (isMediumScreen ? 120.0 : 130.0));
+          final logoImageHeight = isExtraSmallScreen
+              ? 55.0
+              : (isSmallScreen ? 60.0 : (isMediumScreen ? 65.0 : 70.0));
 
           // 卡片宽度响应式
           final cardMaxWidth = (isExtraSmallScreen || isSmallScreen)
@@ -533,11 +546,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               : (isMediumScreen ? 420.0 : 480.0);
 
           // 间距响应式 - Logo与卡片间距
-          final cardSpacingTop = isExtraSmallScreen ? 28.0
-              : (isSmallScreen ? 32.0
-              : (isMediumScreen ? 40.0 : 48.0));
+          final cardSpacingTop = isExtraSmallScreen
+              ? 28.0
+              : (isSmallScreen ? 32.0 : (isMediumScreen ? 40.0 : 48.0));
           final verticalPadding = screenHeight < 700 ? 12.0 : 24.0;
-          final horizontalPadding = (isExtraSmallScreen || isSmallScreen) ? 12.0 : 20.0;
+          final horizontalPadding =
+              (isExtraSmallScreen || isSmallScreen) ? 12.0 : 20.0;
 
           // Theme-based colors
           final bgColors = isDark
@@ -553,7 +567,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 ];
 
           final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-          final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+          final accentColor =
+              isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
           // PC端使用圆角无边框窗口
           Widget content = Container(
@@ -566,9 +581,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 colors: bgColors,
               ),
               // PC端添加圆角
-              borderRadius: PlatformInfos.isDesktop
-                  ? BorderRadius.circular(6)
-                  : null,
+              borderRadius:
+                  PlatformInfos.isDesktop ? BorderRadius.circular(6) : null,
             ),
             child: Stack(
               children: [
@@ -655,9 +669,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   /// Build animated glowing orbs for background
   Widget _buildGlowingOrbs(bool isDark) {
     // Theme-based glow colors
-    final glowColor1 = isDark ? const Color(0xFF00D4FF) : const Color(0xFF4FC3F7);
-    final glowColor2 = isDark ? const Color(0xFF00FF9F) : const Color(0xFF81C784);
-    final glowColor3 = isDark ? const Color(0xFF0099FF) : const Color(0xFF64B5F6);
+    final glowColor1 =
+        isDark ? const Color(0xFF00D4FF) : const Color(0xFF4FC3F7);
+    final glowColor2 =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF81C784);
+    final glowColor3 =
+        isDark ? const Color(0xFF0099FF) : const Color(0xFF64B5F6);
 
     return Stack(
       children: [
@@ -766,20 +783,20 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     Color textColor,
     Color accentColor,
   ) {
+    final l10n = L10n.of(context);
     final titleFontSize = isSmallScreen ? 20.0 : 22.0;
     final spacingTop = isSmallScreen ? 14.0 : 16.0;
     final spacingBetween = isSmallScreen ? 10.0 : 12.0;
 
-    final subtitleColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF5A6A7A);
+    final subtitleColor =
+        isDark ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF5A6A7A);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Title
         Text(
-          '登录 / 注册',
+          l10n.authLoginOrRegister,
           style: TextStyle(
             fontSize: titleFontSize,
             fontWeight: FontWeight.w600,
@@ -792,12 +809,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         // PC端允许在获取验证码后修改手机号，移动端锁定
         _GlowingTextField(
           controller: phoneController,
-          hintText: '请输入手机号',
+          hintText: l10n.authPhoneInputHint,
           prefixIcon: Icons.phone_outlined,
           errorText: phoneError,
           readOnly: loading || (codeSent && !PlatformInfos.isDesktop),
           keyboardType: TextInputType.phone,
-          textInputAction: codeSent ? TextInputAction.next : TextInputAction.done,
+          textInputAction:
+              codeSent ? TextInputAction.next : TextInputAction.done,
           isDark: isDark,
           accentColor: accentColor,
           onChanged: (value) {
@@ -815,7 +833,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         if (codeSent) ...[
           _GlowingTextField(
             controller: codeController,
-            hintText: '请输入验证码',
+            hintText: l10n.authCodeInputHint,
             prefixIcon: Icons.lock_outline,
             errorText: codeError,
             readOnly: loading,
@@ -839,10 +857,14 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             child: TextButton(
               onPressed: countdown > 0 ? null : requestVerificationCode,
               child: Text(
-                countdown > 0 ? '$countdown秒后重新发送' : '重新发送验证码',
+                countdown > 0
+                    ? l10n.authResendCountdown(countdown)
+                    : l10n.authResendCode,
                 style: TextStyle(
                   color: countdown > 0
-                      ? (isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF9E9E9E))
+                      ? (isDark
+                          ? Colors.white.withValues(alpha: 0.4)
+                          : const Color(0xFF9E9E9E))
                       : accentColor,
                   fontSize: 13,
                 ),
@@ -860,7 +882,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               height: 14,
               child: Checkbox(
                 value: agreedToEula,
-                onChanged: (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
+                onChanged:
+                    (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
                 fillColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return accentColor;
@@ -887,23 +910,23 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                     color: subtitleColor,
                   ),
                   children: [
-                    const TextSpan(text: '我已阅读并同意 '),
+                    TextSpan(text: l10n.authAgreementPrefix),
                     WidgetSpan(
                       alignment: PlaceholderAlignment.baseline,
                       baseline: TextBaseline.alphabetic,
                       child: _ClickableLink(
-                        text: '《用户协议》',
+                        text: l10n.authTermsOfService,
                         accentColor: accentColor,
                         onTap: loading ? () {} : showEula,
                         fontSize: 11,
                       ),
                     ),
-                    const TextSpan(text: ' 和 '),
+                    TextSpan(text: l10n.authAgreementAnd),
                     WidgetSpan(
                       alignment: PlaceholderAlignment.baseline,
                       baseline: TextBaseline.alphabetic,
                       child: _ClickableLink(
-                        text: '《隐私政策》',
+                        text: l10n.authPrivacyPolicy,
                         accentColor: accentColor,
                         onTap: loading ? () {} : showPrivacyPolicy,
                         fontSize: 11,
@@ -920,9 +943,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         // Get verification code or Login button
         if (!codeSent)
           _GradientButton(
-            onPressed: (loading || countdown > 0) ? null : requestVerificationCode,
+            onPressed:
+                (loading || countdown > 0) ? null : requestVerificationCode,
             loading: loading,
-            text: countdown > 0 ? '$countdown秒后重试' : '获取验证码',
+            text: countdown > 0
+                ? l10n.authRetryCountdown(countdown)
+                : l10n.authGetVerificationCode,
             isDark: isDark,
             accentColor: accentColor,
           )
@@ -930,7 +956,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           _GradientButton(
             onPressed: loading ? null : verifyAndLogin,
             loading: loading,
-            text: '登录 / 注册',
+            text: l10n.authLoginOrRegister,
             isDark: isDark,
             accentColor: accentColor,
           ),
@@ -1089,7 +1115,9 @@ class _AnimatedFloatingLogoState extends State<_AnimatedFloatingLogo>
         return Transform.translate(
           offset: Offset(0, _floatAnimation.value),
           child: Image.asset(
-            widget.isDark ? 'assets/logo_dark.png' : 'assets/logo_transparent.png',
+            widget.isDark
+                ? 'assets/logo_dark.png'
+                : 'assets/logo_transparent.png',
             width: widget.size,
             height: widget.size,
           ),
@@ -1167,9 +1195,8 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
     final borderColor = widget.isDark
         ? Colors.white.withValues(alpha: 0.1)
         : Colors.black.withValues(alpha: 0.15);
-    final focusBorderColor = widget.isDark
-        ? const Color(0xFF00D4FF)
-        : widget.accentColor;
+    final focusBorderColor =
+        widget.isDark ? const Color(0xFF00D4FF) : widget.accentColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1364,9 +1391,7 @@ class _ClickableLinkState extends State<_ClickableLink> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: _isHovered
-                    ? widget.accentColor
-                    : Colors.transparent,
+                color: _isHovered ? widget.accentColor : Colors.transparent,
                 width: 1.5,
               ),
             ),

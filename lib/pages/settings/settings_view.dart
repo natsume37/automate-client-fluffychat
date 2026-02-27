@@ -33,6 +33,7 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = L10n.of(context);
     final client = Matrix.of(context).clientOrNull;
 
     // 如果客户端已经退出，显示空白或加载状态
@@ -44,9 +45,7 @@ class SettingsView extends StatelessWidget {
 
     // 主题切换后，GoRouter 的路由信息可能被缓存，导致高亮状态错误
     // 改用更可靠的方式：只在用户点击后短暂高亮，不依赖路由状态
-    final accountManageUrl = client
-        .wellKnown
-        ?.additionalProperties
+    final accountManageUrl = client.wellKnown?.additionalProperties
         .tryGetMap<String, Object?>('org.matrix.msc2965.authentication')
         ?.tryGet<String>('account');
     return Row(
@@ -73,8 +72,8 @@ class SettingsView extends StatelessWidget {
                     builder: (context, snapshot) {
                       final profile = snapshot.data;
                       final avatar = profile?.avatarUrl;
-                      final mxid = Matrix.of(context).client.userID ??
-                          L10n.of(context).user;
+                      final mxid =
+                          Matrix.of(context).client.userID ?? l10n.user;
                       final displayname =
                           profile?.displayName ?? mxid.localpart ?? mxid;
                       return Container(
@@ -86,7 +85,8 @@ class SettingsView extends StatelessWidget {
                             end: Alignment.bottomRight,
                             colors: [
                               theme.colorScheme.primaryContainer.withAlpha(120),
-                              theme.colorScheme.secondaryContainer.withAlpha(80),
+                              theme.colorScheme.secondaryContainer
+                                  .withAlpha(80),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(20),
@@ -155,14 +155,16 @@ class SettingsView extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   // 用户ID带复制按钮
                                   GestureDetector(
-                                    onTap: () => FluffyShare.share(mxid, context),
+                                    onTap: () =>
+                                        FluffyShare.share(mxid, context),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10,
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: theme.colorScheme.surface.withAlpha(200),
+                                        color: theme.colorScheme.surface
+                                            .withAlpha(200),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Row(
@@ -175,7 +177,8 @@ class SettingsView extends StatelessWidget {
                                               overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: theme.colorScheme.onSurfaceVariant,
+                                                color: theme.colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                             ),
                                           ),
@@ -209,7 +212,8 @@ class SettingsView extends StatelessWidget {
                           theme,
                           icon: Icons.account_circle_outlined,
                           title: Text(L10n.of(context).manageAccount),
-                          trailing: const Icon(Icons.open_in_new_outlined, size: 20),
+                          trailing:
+                              const Icon(Icons.open_in_new_outlined, size: 20),
                           onTap: () => launchUrlString(
                             accountManageUrl,
                             mode: LaunchMode.inAppBrowserView,
@@ -223,7 +227,7 @@ class SettingsView extends StatelessWidget {
                   // 偏好设置卡片
                   _buildSettingsCard(
                     theme,
-                    title: '偏好设置',
+                    title: l10n.settingsPreferenceSectionTitle,
                     children: [
                       _buildCardListTile(
                         theme,
@@ -236,7 +240,8 @@ class SettingsView extends StatelessWidget {
                         theme,
                         icon: Icons.notifications_outlined,
                         title: Text(L10n.of(context).notifications),
-                        onTap: () => context.go('/rooms/settings/notifications'),
+                        onTap: () =>
+                            context.go('/rooms/settings/notifications'),
                       ),
                       _buildDivider(theme),
                       _buildCardListTile(
@@ -253,20 +258,21 @@ class SettingsView extends StatelessWidget {
                   // 关于应用卡片
                   _buildSettingsCard(
                     theme,
-                    title: '关于应用',
+                    title: l10n.settingsAboutSectionTitle,
                     children: [
                       _buildCardListTile(
                         theme,
                         icon: Icons.feedback_outlined,
-                        title: const Text('意见反馈'),
+                        title: Text(l10n.settingsFeedback),
                         onTap: controller.submitFeedbackAction,
                       ),
                       _buildDivider(theme),
                       _buildCardListTile(
                         theme,
                         icon: Icons.privacy_tip_outlined,
-                        title: const Text('隐私政策'),
-                        trailing: const Icon(Icons.open_in_new_outlined, size: 20),
+                        title: Text(l10n.settingsPrivacyPolicy),
+                        trailing:
+                            const Icon(Icons.open_in_new_outlined, size: 20),
                         onTap: () => launchUrlString(
                           AppConfig.privacyUrl.toString(),
                           mode: LaunchMode.inAppBrowserView,
@@ -289,7 +295,7 @@ class SettingsView extends StatelessWidget {
                             icon: isDesktop
                                 ? Icons.downloading_rounded
                                 : Icons.system_update_outlined,
-                            title: const Text('检查更新'),
+                            title: Text(l10n.settingsCheckUpdates),
                             onTap: () => _checkForUpdate(context),
                           );
                         },
@@ -299,8 +305,8 @@ class SettingsView extends StatelessWidget {
                         _buildCardListTile(
                           theme,
                           icon: Icons.bug_report_outlined,
-                          title: const Text('测试更新弹窗'),
-                          subtitle: const Text('预览应用更新UI效果'),
+                          title: Text(l10n.settingsTestUpdateDialog),
+                          subtitle: Text(l10n.settingsTestUpdateDialogSubtitle),
                           onTap: () => AppUpdateTest.showTestDialog(context),
                         ),
                       ],
@@ -312,7 +318,7 @@ class SettingsView extends StatelessWidget {
                   // 危险操作卡片
                   _buildSettingsCard(
                     theme,
-                    title: '账号操作',
+                    title: l10n.settingsAccountActionsTitle,
                     isDanger: true,
                     children: [
                       _buildCardListTile(
@@ -320,7 +326,7 @@ class SettingsView extends StatelessWidget {
                         icon: Icons.logout_outlined,
                         iconColor: theme.colorScheme.error,
                         title: Text(
-                          L10n.of(context).logout,
+                          l10n.logout,
                           style: TextStyle(color: theme.colorScheme.error),
                         ),
                         onTap: controller.logoutAction,
@@ -331,12 +337,14 @@ class SettingsView extends StatelessWidget {
                         icon: Icons.delete_forever_outlined,
                         iconColor: theme.colorScheme.error,
                         title: Text(
-                          '注销账号',
+                          l10n.settingsDeleteAccountTitle,
                           style: TextStyle(color: theme.colorScheme.error),
                         ),
                         subtitle: Text(
-                          '永久删除账号及所有数据',
-                          style: TextStyle(color: theme.colorScheme.error.withValues(alpha: 0.7)),
+                          l10n.settingsDeleteAccountSubtitle,
+                          style: TextStyle(
+                              color: theme.colorScheme.error
+                                  .withValues(alpha: 0.7)),
                         ),
                         onTap: controller.deleteAccountAction,
                       ),
@@ -434,8 +442,10 @@ class SettingsView extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        splashColor: (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.15),
-        highlightColor: (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.08),
+        splashColor:
+            (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.15),
+        highlightColor:
+            (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.08),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/widgets/layouts/login_scaffold.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
@@ -15,6 +16,7 @@ class LoginSignupView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final l10n = L10n.of(context);
 
     return LoginScaffold(
       appBar: AppBar(
@@ -62,19 +64,22 @@ class LoginSignupView extends StatelessWidget {
                             onChanged: controller.loading
                                 ? null
                                 : (_) => controller.toggleEulaAgreement(),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                           ),
                           Flexible(
                             child: Text.rich(
                               TextSpan(
                                 style: textTheme.bodyMedium,
                                 children: [
-                                  const TextSpan(text: '我已阅读并同意'),
+                                  TextSpan(text: l10n.authAgreementPrefix),
                                   WidgetSpan(
                                     child: InkWell(
-                                      onTap: controller.loading ? null : controller.showEula,
+                                      onTap: controller.loading
+                                          ? null
+                                          : controller.showEula,
                                       child: Text(
-                                        '《用户协议》',
+                                        l10n.authTermsOfService,
                                         style: textTheme.bodyMedium?.copyWith(
                                           color: theme.colorScheme.primary,
                                           fontWeight: FontWeight.bold,
@@ -82,12 +87,14 @@ class LoginSignupView extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  const TextSpan(text: '和'),
+                                  TextSpan(text: l10n.authAgreementAnd),
                                   WidgetSpan(
                                     child: InkWell(
-                                      onTap: controller.loading ? null : controller.showPrivacyPolicy,
+                                      onTap: controller.loading
+                                          ? null
+                                          : controller.showPrivacyPolicy,
                                       child: Text(
-                                        '《隐私政策》',
+                                        l10n.authPrivacyPolicy,
                                         style: textTheme.bodyMedium?.copyWith(
                                           color: theme.colorScheme.primary,
                                           fontWeight: FontWeight.bold,
@@ -120,7 +127,8 @@ class LoginSignupView extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             ),
@@ -137,15 +145,18 @@ class LoginSignupView extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed:
-                              controller.loading ? null : controller.oneClickLogin,
+                          onPressed: controller.loading
+                              ? null
+                              : controller.oneClickLogin,
                           icon: controller.loading
                               ? const BrandedProgressIndicator.small(
                                   backgroundColor: Colors.transparent,
                                 )
                               : const Icon(Icons.phone_android, size: 28),
                           label: Text(
-                            controller.loading ? '登录中...' : '本机号码一键登录',
+                            controller.loading
+                                ? l10n.authLoginInProgress
+                                : l10n.authOneClickButton,
                             style: TextStyle(
                               fontSize: textTheme.titleMedium?.fontSize,
                               fontWeight: FontWeight.bold,
@@ -172,7 +183,8 @@ class LoginSignupView extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             ),
@@ -198,7 +210,9 @@ class LoginSignupView extends StatelessWidget {
                                 )
                               : const Icon(Icons.sms_outlined, size: 28),
                           label: Text(
-                            controller.loading ? '登录中...' : '短信验证码登录',
+                            controller.loading
+                                ? l10n.authLoginInProgress
+                                : l10n.authSmsLoginButton,
                             style: TextStyle(
                               fontSize: textTheme.titleMedium?.fontSize,
                               fontWeight: FontWeight.bold,
@@ -225,7 +239,6 @@ class LoginSignupView extends StatelessWidget {
               ),
             ),
           ),
-
         ],
       ),
     );

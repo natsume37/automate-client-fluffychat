@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 
 import '../../models/plugin.dart';
 import '../../repositories/plugin_repository.dart';
@@ -67,7 +68,10 @@ class TrainingTabState extends State<TrainingTab>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = e.toLocalizedString(
+            context,
+            ExceptionContext.loadTrainingList,
+          );
           _isLoading = false;
         });
       }
@@ -256,7 +260,8 @@ class TrainingTabState extends State<TrainingTab>
           final cardWidth = availableWidth / crossAxisCount - 12; // 减去间距
 
           // 根据卡片宽度调整宽高比（数值越小，卡片越高）
-          final aspectRatio = cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
+          final aspectRatio =
+              cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
 
           return GridView.builder(
             physics: const AlwaysScrollableScrollPhysics(),

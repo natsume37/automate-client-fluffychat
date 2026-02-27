@@ -107,7 +107,10 @@ class RecruitTabState extends State<RecruitTab>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = e.toLocalizedString(
+            context,
+            ExceptionContext.loadRecruitTemplates,
+          );
           _isLoading = false;
         });
       }
@@ -232,7 +235,8 @@ class RecruitTabState extends State<RecruitTab>
           _employeeCount--;
         }
       });
-      final message = e.toLocalizedString(context, ExceptionContext.hireEmployee);
+      final message =
+          e.toLocalizedString(context, ExceptionContext.hireEmployee);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
@@ -322,7 +326,8 @@ class RecruitTabState extends State<RecruitTab>
     if (_isLoading) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          final crossAxisCount = _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
+          final crossAxisCount =
+              _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
           return GridView.builder(
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -332,7 +337,8 @@ class RecruitTabState extends State<RecruitTab>
               childAspectRatio: 0.75,
             ),
             itemCount: crossAxisCount * 2,
-            itemBuilder: (context, index) => const SkeletonGridItem(height: 220),
+            itemBuilder: (context, index) =>
+                const SkeletonGridItem(height: 220),
           );
         },
       );
@@ -435,9 +441,11 @@ class RecruitTabState extends State<RecruitTab>
     // 模板列表 - 响应式网格布局
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
+        final crossAxisCount =
+            _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
         // 根据列数调整宽高比
-        final aspectRatio = isDesktop ? (crossAxisCount >= 4 ? 0.68 : 0.72) : 0.72;
+        final aspectRatio =
+            isDesktop ? (crossAxisCount >= 4 ? 0.68 : 0.72) : 0.72;
 
         return GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),

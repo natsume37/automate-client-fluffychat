@@ -13,6 +13,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'events/audio_player.dart';
@@ -112,7 +113,10 @@ class RecordingViewModelState extends State<RecordingViewModel> {
       showOkAlertDialog(
         context: context,
         title: L10n.of(context).oopsSomethingWentWrong,
-        message: e.toString(),
+        message: e.toLocalizedString(
+          context,
+          ExceptionContext.recordVoice,
+        ),
       );
       setState(_reset);
     }

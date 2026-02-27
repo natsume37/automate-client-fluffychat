@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
-import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -62,13 +61,14 @@ class SettingsController extends State<Settings> {
 
   void deleteAccountAction() async {
     final l10n = L10n.of(context);
+    final confirmKeyword = l10n.settingsDeleteAccountInputKeyword;
 
     // 第一次确认
     final firstConfirm = await showOkCancelAlertDialog(
       context: context,
-      title: '注销账号',
-      message: '注销后，您的账号将被永久删除，所有数据将无法恢复。确定要继续吗？',
-      okLabel: '继续',
+      title: l10n.settingsDeleteAccountConfirmTitle,
+      message: l10n.settingsDeleteAccountConfirmMessage,
+      okLabel: l10n.settingsDeleteAccountContinue,
       cancelLabel: l10n.cancel,
       isDestructive: true,
     );
@@ -78,16 +78,16 @@ class SettingsController extends State<Settings> {
     final input = await showTextInputDialog(
       useRootNavigator: false,
       context: context,
-      title: '确认注销',
-      message: '请输入"注销"以确认删除账号',
-      okLabel: '确认注销',
+      title: l10n.settingsDeleteAccountInputTitle,
+      message: l10n.settingsDeleteAccountInputMessage(confirmKeyword),
+      okLabel: l10n.settingsDeleteAccountInputConfirm,
       cancelLabel: l10n.cancel,
       isDestructive: true,
     );
-    if (input == null || input != '注销') {
+    if (input == null || input.trim() != confirmKeyword) {
       if (input != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('输入不正确，请输入"注销"')),
+          SnackBar(content: Text(l10n.settingsDeleteAccountInputInvalid)),
         );
       }
       return;
@@ -107,9 +107,9 @@ class SettingsController extends State<Settings> {
 
     final error = success.error;
     if (error != null) {
-      final message = error.toLocalizedString(context);
+      debugPrint('[Settings] Delete account failed: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('注销失败: $message')),
+        SnackBar(content: Text(l10n.settingsDeleteAccountFailed)),
       );
       return;
     }
@@ -171,7 +171,8 @@ class SettingsController extends State<Settings> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  color:
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -184,7 +185,7 @@ class SettingsController extends State<Settings> {
 
               // 标题
               Text(
-                '确定退出登录？',
+                l10n.settingsLogoutConfirmTitle,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -208,7 +209,7 @@ class SettingsController extends State<Settings> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '退出后，员工仍会继续工作',
+                        l10n.settingsLogoutConfirmHint,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: const Color(0xFF2E7D32),
                         ),
@@ -228,7 +229,8 @@ class SettingsController extends State<Settings> {
                       onPressed: () => Navigator.of(context).pop(false),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -320,7 +322,8 @@ class SettingsController extends State<Settings> {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
-      deviceInfo = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
+      deviceInfo =
+          '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
     } catch (_) {}
 
     final apiClient = context.read<PsygoApiClient>();
@@ -337,7 +340,7 @@ class SettingsController extends State<Settings> {
 
     if (success.error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('反馈提交成功，感谢您的反馈！')),
+        SnackBar(content: Text(L10n.of(context).settingsFeedbackSubmitted)),
       );
     }
   }
@@ -417,10 +420,10 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
   String _selectedCategory = 'suggestion';
 
   final _categories = [
-    {'value': 'bug', 'label': 'Bug 反馈', 'icon': Icons.bug_report_outlined},
-    {'value': 'suggestion', 'label': '功能建议', 'icon': Icons.lightbulb_outlined},
-    {'value': 'complaint', 'label': '问题投诉', 'icon': Icons.report_outlined},
-    {'value': 'other', 'label': '其他', 'icon': Icons.more_horiz},
+    {'value': 'bug', 'icon': Icons.bug_report_outlined},
+    {'value': 'suggestion', 'icon': Icons.lightbulb_outlined},
+    {'value': 'complaint', 'icon': Icons.report_outlined},
+    {'value': 'other', 'icon': Icons.more_horiz},
   ];
 
   @override
@@ -430,9 +433,23 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
     super.dispose();
   }
 
+  String _categoryLabel(L10n l10n, String value) {
+    switch (value) {
+      case 'bug':
+        return l10n.settingsFeedbackTypeBug;
+      case 'suggestion':
+        return l10n.settingsFeedbackTypeSuggestion;
+      case 'complaint':
+        return l10n.settingsFeedbackTypeComplaint;
+      default:
+        return l10n.settingsFeedbackTypeOther;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final l10n = L10n.of(context);
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -457,7 +474,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '意见反馈',
+                    l10n.settingsFeedbackTitle,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -469,7 +486,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               // 可滚动内容区域
               Flexible(
                 child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(scrollbars: false),
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -477,7 +495,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                       children: [
                         // 反馈类型选择
                         Text(
-                          '反馈类型',
+                          l10n.settingsFeedbackType,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -487,7 +505,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                           spacing: 8,
                           runSpacing: 8,
                           children: _categories.map((cat) {
-                            final isSelected = _selectedCategory == cat['value'];
+                            final isSelected =
+                                _selectedCategory == cat['value'];
                             return ChoiceChip(
                               label: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -500,13 +519,17 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                                         : theme.colorScheme.onSurface,
                                   ),
                                   const SizedBox(width: 4),
-                                  Text(cat['label'] as String),
+                                  Text(
+                                    _categoryLabel(
+                                        l10n, cat['value'] as String),
+                                  ),
                                 ],
                               ),
                               selected: isSelected,
                               onSelected: (selected) {
                                 if (selected) {
-                                  setState(() => _selectedCategory = cat['value'] as String);
+                                  setState(() => _selectedCategory =
+                                      cat['value'] as String);
                                 }
                               },
                             );
@@ -516,7 +539,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
 
                         // 反馈内容
                         Text(
-                          '反馈内容',
+                          l10n.settingsFeedbackContent,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -527,7 +550,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                           maxLines: 4,
                           maxLength: 500,
                           decoration: InputDecoration(
-                            hintText: '请详细描述您的问题或建议...',
+                            hintText: l10n.settingsFeedbackContentHint,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -537,7 +560,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
 
                         // 回复邮箱（可选）
                         Text(
-                          '回复邮箱（可选）',
+                          l10n.settingsFeedbackReplyEmailOptional,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -547,7 +570,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: '方便我们回复您',
+                            hintText: l10n.settingsFeedbackReplyEmailHint,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -568,13 +591,14 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Text(
-                        '取消',
+                        l10n.cancel,
                         style: TextStyle(
                           color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -588,7 +612,11 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                       onPressed: () {
                         if (_contentController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('请输入反馈内容')),
+                            SnackBar(
+                              content: Text(
+                                l10n.settingsFeedbackContentRequired,
+                              ),
+                            ),
                           );
                           return;
                         }
@@ -605,9 +633,9 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        '提交',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        l10n.submit,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),

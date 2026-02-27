@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
@@ -19,7 +20,8 @@ class LoginSignup extends StatefulWidget {
   LoginSignupController createState() => LoginSignupController();
 }
 
-class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserver, LoginFlowMixin {
+class LoginSignupController extends State<LoginSignup>
+    with WidgetsBindingObserver, LoginFlowMixin {
   @override
   PsygoApiClient get backend => context.read<PsygoApiClient>();
 
@@ -89,7 +91,8 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
     super.didChangeAppLifecycleState(state);
     // 当 app 从后台恢复时，如果正在授权流程中，关闭可能残留的授权页面
     if (state == AppLifecycleState.resumed && _isInAuthFlow) {
-      debugPrint('App resumed during auth flow, closing auth page to prevent black screen');
+      debugPrint(
+          'App resumed during auth flow, closing auth page to prevent black screen');
       OneClickLoginService.quitLoginPage();
       setState(() {
         _isInAuthFlow = false;
@@ -105,10 +108,12 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
   /// One-click login (Aliyun Official SDK)
   /// 新流程：调用 /api/auth/one-click-login 直接完成登录
   void oneClickLogin() async {
+    final l10n = L10n.of(context);
+
     // Web platform doesn't support one-click login
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('网页版暂不支持一键登录，请点击下方"登录其他账号"')),
+        SnackBar(content: Text(l10n.authWebOneClickNotSupported)),
       );
       return;
     }
@@ -126,7 +131,8 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
     try {
       // 阿里云控制台获取的密钥
       // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-      const secretKey = String.fromEnvironment('ALIYUN_SECRET_KEY', defaultValue: '');
+      const secretKey =
+          String.fromEnvironment('ALIYUN_SECRET_KEY', defaultValue: '');
 
       debugPrint('=== 使用官方 SDK 进行一键登录 ===');
 
@@ -151,9 +157,10 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
       // 用户点击了"其他方式登录"按钮（但按钮已隐藏，理论上不会触发）
       // 不跳转，只显示错误提示
       debugPrint('用户选择其他登录方式（不应该发生）');
+      if (!mounted) return;
       setState(() {
         _isInAuthFlow = false;
-        phoneError = '当前仅支持本机号码一键登录';
+        phoneError = l10n.authOnlyOneClickSupported;
         loading = false;
       });
     } catch (e, stackTrace) {
@@ -162,8 +169,9 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
       // 出错时关闭授权页
       _isInAuthFlow = false;
       await OneClickLoginService.quitLoginPage();
+      if (!mounted) return;
       setState(() {
-        phoneError = (e as Object).toLocalizedString(
+        phoneError = e.toLocalizedString(
           context,
           ExceptionContext.oneClickLogin,
         );
@@ -174,20 +182,21 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
 
   Future<bool> _ensureEulaAccepted() async {
     if (agreedToEula) return true;
+    final l10n = L10n.of(context);
 
     final shouldAccept = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('同意最终用户许可协议'),
-        content: const Text('继续操作前，请阅读并同意《最终用户许可协议》。'),
+        title: Text(l10n.authEulaDialogTitle),
+        content: Text(l10n.authEulaDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('同意'),
+            child: Text(l10n.accept),
           ),
         ],
       ),
@@ -202,31 +211,35 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
   }
 
   void showEula() async {
+    final l10n = L10n.of(context);
     if (_termsUrl == null) {
       // URL 未加载，尝试重新加载
       await _loadAgreements();
       if (_termsUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法加载用户协议，请检查网络连接')),
+          SnackBar(content: Text(l10n.authAgreementLoadFailedTerms)),
         );
         return;
       }
     }
-    await AgreementWebViewPage.open(context, '用户协议', _termsUrl!);
+    await AgreementWebViewPage.open(
+        context, l10n.authTermsOfService, _termsUrl!);
   }
 
   void showPrivacyPolicy() async {
+    final l10n = L10n.of(context);
     if (_privacyUrl == null) {
       // URL 未加载，尝试重新加载
       await _loadAgreements();
       if (_privacyUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法加载隐私政策，请检查网络连接')),
+          SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
         );
         return;
       }
     }
-    await AgreementWebViewPage.open(context, '隐私政策', _privacyUrl!);
+    await AgreementWebViewPage.open(
+        context, l10n.authPrivacyPolicy, _privacyUrl!);
   }
 
   @override

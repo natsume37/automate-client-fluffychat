@@ -42,21 +42,22 @@ class SendFileDialogState extends State<SendFileDialog> {
 
   final TextEditingController _labelTextController = TextEditingController();
 
-  String _fileDisplayName(XFile file) {
+  String _fileDisplayName(BuildContext context, XFile file) {
     if (file.name.isNotEmpty) {
       return file.name;
     }
     if (file.path.isNotEmpty) {
       return path_lib.basename(file.path);
     }
-    return '未命名文件';
+    return L10n.of(context).sendFileUnnamed;
   }
 
   Future<void> _openFilePreview(BuildContext context, XFile file) async {
     final scaffoldMessenger = ScaffoldMessenger.of(widget.outerContext);
+    final l10n = L10n.of(context);
     if (PlatformInfos.isWeb) {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Web 暂不支持预览文件')),
+        SnackBar(content: Text(l10n.sendFileWebPreviewNotSupported)),
       );
       return;
     }
@@ -65,9 +66,9 @@ class SendFileDialogState extends State<SendFileDialog> {
     if (path.isEmpty) {
       final bytes = await file.readAsBytes();
       final tempDir = await getTemporaryDirectory();
-      final fileName = _fileDisplayName(file).trim().isEmpty
+      final fileName = _fileDisplayName(context, file).trim().isEmpty
           ? 'attachment'
-          : _fileDisplayName(file).trim();
+          : _fileDisplayName(context, file).trim();
       final tempPath = path_lib.join(
         tempDir.path,
         '${DateTime.now().millisecondsSinceEpoch}_$fileName',
@@ -79,19 +80,24 @@ class SendFileDialogState extends State<SendFileDialog> {
     try {
       final result = await OpenFile.open(path);
       if (result.type != ResultType.done) {
-        final message = result.message.isNotEmpty ? result.message : '无法打开文件';
-        scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
+        debugPrint(
+          '[SendFileDialog] Open file failed: ${result.type}, ${result.message}',
+        );
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text(l10n.sendFileCannotOpen)),
+        );
       }
     } catch (_) {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('无法打开文件')),
+        SnackBar(content: Text(l10n.sendFileCannotOpen)),
       );
     }
   }
 
   Widget _buildFilePreviewItem(BuildContext context, XFile file) {
     final theme = Theme.of(context);
-    final fileName = _fileDisplayName(file);
+    final l10n = L10n.of(context);
+    final fileName = _fileDisplayName(context, file);
     return Material(
       color: theme.colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(14),
@@ -132,8 +138,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                       future: file.length(),
                       builder: (context, snapshot) {
                         final subtitle = snapshot.hasData
-                            ? '${snapshot.data!.sizeString} · 点击打开'
-                            : '点击打开查看文件';
+                            ? '${snapshot.data!.sizeString} · ${l10n.sendFileTapToOpen}'
+                            : l10n.sendFileTapToPreview;
                         return Text(
                           subtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -295,8 +301,11 @@ class SendFileDialogState extends State<SendFileDialog> {
         .singleOrNull;
 
     final isImage = uniqueFileType == 'image';
-    final labelTitle = isImage ? '图片名称' : '文件名称';
-    final labelHint = isImage ? '(可选) 输入图片名称...' : '(可选) 输入文件名称...';
+    final l10n = L10n.of(context);
+    final labelTitle =
+        isImage ? l10n.sendFileImageName : l10n.sendFileDocumentName;
+    final labelHint =
+        isImage ? l10n.sendFileImageNameHint : l10n.sendFileDocumentNameHint;
 
     if (isImage) {
       if (widget.files.length == 1) {
@@ -320,7 +329,8 @@ class SendFileDialogState extends State<SendFileDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 600),
             padding: const EdgeInsets.all(16),
@@ -383,7 +393,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                               children: [
                                 Container(
                                   height: 300,
-                                  constraints: const BoxConstraints(maxWidth: 400),
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 400),
                                   decoration: BoxDecoration(
                                     color: Colors.grey[200],
                                     borderRadius: BorderRadius.circular(16),
@@ -410,10 +421,11 @@ class SendFileDialogState extends State<SendFileDialog> {
                                           scrollDirection: Axis.horizontal,
                                           itemCount: widget.files.length,
                                           itemBuilder: (context, i) => Padding(
-                                            padding:
-                                                const EdgeInsets.only(right: 8.0),
+                                            padding: const EdgeInsets.only(
+                                                right: 8.0),
                                             child: FutureBuilder(
-                                              future: widget.files[i].readAsBytes(),
+                                              future:
+                                                  widget.files[i].readAsBytes(),
                                               builder: (context, snapshot) {
                                                 final bytes = snapshot.data;
                                                 if (bytes == null) {
@@ -443,7 +455,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                                     color: Colors.black.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(20),
                                     child: InkWell(
-                                      onTap: () => _showFullScreenImage(context),
+                                      onTap: () =>
+                                          _showFullScreenImage(context),
                                       borderRadius: BorderRadius.circular(20),
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
@@ -464,7 +477,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '文件预览',
+                                l10n.sendFilePreviewTitle,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -491,7 +504,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                           decoration: InputDecoration(
                             hintText: labelHint,
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceContainerHighest,
+                            fillColor:
+                                theme.colorScheme.surfaceContainerHighest,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -541,19 +555,22 @@ class SendFileDialogState extends State<SendFileDialog> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '压缩图片',
-                                        style: theme.textTheme.titleSmall?.copyWith(
+                                        l10n.sendFileCompressMedia,
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w600,
                                           color: const Color(0xFF2E7D32),
                                         ),
                                       ),
                                       const SizedBox(height: 1),
                                       Text(
-                                        '减小文件大小，加快发送',
-                                        style: theme.textTheme.bodySmall?.copyWith(
+                                        l10n.sendFileCompressMediaHint,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
                                           color: const Color(0xFF2E7D32),
                                           fontSize: 11,
                                         ),

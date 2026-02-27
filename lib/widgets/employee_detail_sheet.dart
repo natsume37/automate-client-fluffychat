@@ -252,7 +252,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       return l10n.serverError;
     }
 
-    return '${l10n.errorStartingChat}: ${e.toString().split('\n').first}';
+    return l10n.serverError;
   }
 
   @override
@@ -289,18 +289,18 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                   ),
                 ],
               ),
-              child: employee.avatarUrl != null &&
-                      employee.avatarUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: CustomNetworkImage(
-                        employee.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _buildAvatarFallback(theme),
-                      ),
-                    )
-                  : _buildAvatarFallback(theme),
+              child:
+                  employee.avatarUrl != null && employee.avatarUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: CustomNetworkImage(
+                            employee.avatarUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _buildAvatarFallback(theme),
+                          ),
+                        )
+                      : _buildAvatarFallback(theme),
             ),
             const SizedBox(height: 20),
 
@@ -317,7 +317,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             // Matrix ID
             if (employee.matrixUserId != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(20),
@@ -741,7 +742,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+              color:
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(

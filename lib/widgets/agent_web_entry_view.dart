@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -75,7 +76,7 @@ class _AgentWebEntryViewState extends State<AgentWebEntryView> {
 
             setState(() {
               _isLoading = false;
-              _errorMessage = '加载失败（${err.errorCode}）：${err.description}';
+              _errorMessage = L10n.of(context).webEntryLoadFailed;
             });
           },
           onNavigationRequest: (request) {
@@ -130,7 +131,7 @@ class _AgentWebEntryViewState extends State<AgentWebEntryView> {
                     });
                     _controller.reload();
                   },
-                  child: const Text('重试'),
+                  child: Text(L10n.of(context).tryAgain),
                 ),
               ],
             ),

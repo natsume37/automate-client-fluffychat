@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 
 import '../models/agent.dart';
 import '../models/plugin.dart';
@@ -65,8 +66,10 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
       for (final employee in employees) {
         if (!employee.isReady) continue;
         try {
-          final plugins = await _pluginRepository.getAgentPlugins(employee.agentId);
-          if (plugins.any((p) => p.pluginName == widget.plugin.name && p.isActive)) {
+          final plugins =
+              await _pluginRepository.getAgentPlugins(employee.agentId);
+          if (plugins
+              .any((p) => p.pluginName == widget.plugin.name && p.isActive)) {
             installedIds.add(employee.agentId);
           }
         } catch (_) {
@@ -84,7 +87,10 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = e.toLocalizedString(
+            context,
+            ExceptionContext.loadTrainingDetail,
+          );
           _isLoading = false;
         });
       }
@@ -336,7 +342,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
                 const SizedBox(height: 10),
                 // 统计信息 - 胶囊样式
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
@@ -434,7 +441,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: Text(l10n.tryAgain),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -472,7 +480,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withAlpha(180),
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withAlpha(180),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -528,7 +537,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
         // 已培训员工（只读）
         if (trained.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _buildSectionHeader(theme, l10n.trainedEmployeesSection, trained.length),
+          _buildSectionHeader(
+              theme, l10n.trainedEmployeesSection, trained.length),
           ...trained.map((e) => _buildEmployeeItem(theme, l10n, e, true)),
         ],
       ],
@@ -598,7 +608,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
         ),
         trailing: isTrained
             ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
@@ -657,7 +668,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
               child: CustomNetworkImage(
                 employee.avatarUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildAvatarFallback(theme, employee),
+                errorBuilder: (_, __, ___) =>
+                    _buildAvatarFallback(theme, employee),
               ),
             )
           : _buildAvatarFallback(theme, employee),

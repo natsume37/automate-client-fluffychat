@@ -12,8 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/custom_http_client.dart';
-import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 版本跳过存储 key
@@ -26,19 +26,20 @@ class AppUpdateService {
   // 后台定时检查
   static Timer? _backgroundTimer;
   static bool _isDialogShowing = false;
-  static bool _hasSuccessfulCheck = false;  // 是否成功检查过一次
+  static bool _hasSuccessfulCheck = false; // 是否成功检查过一次
   static const Duration _checkInterval = Duration(minutes: 5);
-  static const Duration _retryInterval = Duration(seconds: 30);  // 首次失败后的重试间隔
-  static const Duration _resumeDebounce = Duration(seconds: 3);  // 恢复检查的防抖时间
+  static const Duration _retryInterval = Duration(seconds: 30); // 首次失败后的重试间隔
+  static const Duration _resumeDebounce = Duration(seconds: 3); // 恢复检查的防抖时间
 
   // 保存引用以便重试
   static PsygoApiClient? _apiClient_;
   static BuildContext Function()? _getContext;
 
   // 网络监听
-  static StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
-  static bool _wasOffline = false;  // 上次是否处于离线状态
-  static DateTime? _lastCheckTime;  // 上次检查时间，用于防抖
+  static StreamSubscription<List<ConnectivityResult>>?
+      _connectivitySubscription;
+  static bool _wasOffline = false; // 上次是否处于离线状态
+  static DateTime? _lastCheckTime; // 上次检查时间，用于防抖
 
   AppUpdateService(this._apiClient);
 
@@ -81,7 +82,8 @@ class AppUpdateService {
   }
 
   /// 检查是否应该跳过此版本（非强制更新且版本 <= skip_version）
-  static Future<bool> shouldSkipVersion(String latestVersion, bool forceUpdate) async {
+  static Future<bool> shouldSkipVersion(
+      String latestVersion, bool forceUpdate) async {
     // 强制更新不跳过
     if (forceUpdate) return false;
 
@@ -94,7 +96,8 @@ class AppUpdateService {
   }
 
   /// 启动后台定时检查
-  static void startBackgroundCheck(PsygoApiClient apiClient, BuildContext Function() getContext) {
+  static void startBackgroundCheck(
+      PsygoApiClient apiClient, BuildContext Function() getContext) {
     // 避免重复启动
     if (_backgroundTimer != null) return;
 
@@ -113,8 +116,10 @@ class AppUpdateService {
   /// 启动网络状态监听
   static void _startNetworkListener() {
     _connectivitySubscription?.cancel();
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
-      final isOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      final isOffline =
+          results.isEmpty || results.every((r) => r == ConnectivityResult.none);
 
       if (_wasOffline && !isOffline) {
         // 从离线恢复到在线
@@ -126,7 +131,8 @@ class AppUpdateService {
 
     // 初始化离线状态
     Connectivity().checkConnectivity().then((results) {
-      _wasOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+      _wasOffline =
+          results.isEmpty || results.every((r) => r == ConnectivityResult.none);
     });
   }
 
@@ -138,7 +144,8 @@ class AppUpdateService {
   /// 带防抖的检查触发
   static void _triggerCheckWithDebounce() {
     final now = DateTime.now();
-    if (_lastCheckTime != null && now.difference(_lastCheckTime!) < _resumeDebounce) {
+    if (_lastCheckTime != null &&
+        now.difference(_lastCheckTime!) < _resumeDebounce) {
       return;
     }
     _lastCheckTime = now;
@@ -161,10 +168,10 @@ class AppUpdateService {
 
   /// 首次检查失败时调用，启动短间隔重试
   static void _scheduleRetry() {
-    if (_hasSuccessfulCheck) return;  // 已经成功检查过，不需要重试
+    if (_hasSuccessfulCheck) return; // 已经成功检查过，不需要重试
 
     Future.delayed(_retryInterval, () async {
-      if (_hasSuccessfulCheck) return;  // 再次检查，避免重复
+      if (_hasSuccessfulCheck) return; // 再次检查，避免重复
       await _doBackgroundCheck();
     });
   }
@@ -205,7 +212,8 @@ class AppUpdateService {
       if (!context.mounted) return;
 
       // 检查是否应该跳过此版本
-      if (await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+      if (await shouldSkipVersion(
+          response.latestVersion, response.forceUpdate)) {
         return;
       }
 
@@ -231,7 +239,8 @@ class AppUpdateService {
           forceUpdate: response.forceUpdate,
           downloadUrl: downloadUrl,
           changelog: response.changelog,
-          refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
+          refreshDownloadUrl: () =>
+              _refreshDownloadUrl(currentVersion, platform),
         ),
       );
 
@@ -260,7 +269,8 @@ class AppUpdateService {
   /// 检查更新并显示弹窗
   /// 返回 true 表示用户可以继续使用，false 表示被强制更新阻止
   /// [showNoUpdateHint] 为 true 时，如果没有更新也会显示提示
-  Future<bool> checkAndPrompt(BuildContext context, {bool showNoUpdateHint = false}) async {
+  Future<bool> checkAndPrompt(BuildContext context,
+      {bool showNoUpdateHint = false}) async {
     try {
       final currentVersion = await PlatformInfos.getVersion();
       final platform = _getPlatformName();
@@ -276,7 +286,8 @@ class AppUpdateService {
       if (!response.hasUpdate) {
         // 已是最新版本
         if (showNoUpdateHint && context.mounted) {
-          await _showNoUpdateDialog(context, response.latestVersion, response.changelog);
+          await _showNoUpdateDialog(
+              context, response.latestVersion, response.changelog);
         }
         return true;
       }
@@ -284,14 +295,17 @@ class AppUpdateService {
       if (!context.mounted) return true;
 
       // 如果不是手动检查（showNoUpdateHint=false），检查是否应该跳过此版本
-      if (!showNoUpdateHint && await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+      if (!showNoUpdateHint &&
+          await shouldSkipVersion(
+              response.latestVersion, response.forceUpdate)) {
         return true;
       }
 
       // 确保 downloadUrl 不为空
       final downloadUrl = response.downloadUrl;
       if (downloadUrl == null || downloadUrl.isEmpty) {
-        debugPrint('[AppUpdate] Error: hasUpdate=true but downloadUrl is null/empty');
+        debugPrint(
+            '[AppUpdate] Error: hasUpdate=true but downloadUrl is null/empty');
         return true;
       }
 
@@ -304,7 +318,8 @@ class AppUpdateService {
           forceUpdate: response.forceUpdate,
           downloadUrl: downloadUrl,
           changelog: response.changelog,
-          refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
+          refreshDownloadUrl: () =>
+              _refreshDownloadUrl(currentVersion, platform),
         ),
       );
 
@@ -322,9 +337,8 @@ class AppUpdateService {
       }
       // 检查失败时不阻止用户使用，但如果是手动检查则显示错误
       if (showNoUpdateHint && context.mounted) {
-        final message = (e as Object).toLocalizedString(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('检查更新失败: $message')),
+          SnackBar(content: Text(L10n.of(context).appUpdateCheckFailed)),
         );
       }
       return true;
@@ -343,8 +357,10 @@ class AppUpdateService {
   }
 
   /// 显示"已是最新版本"弹窗（包含当前版本 changelog）
-  Future<void> _showNoUpdateDialog(BuildContext context, String currentVersion, String? changelog) async {
+  Future<void> _showNoUpdateDialog(
+      BuildContext context, String currentVersion, String? changelog) async {
     final theme = Theme.of(context);
+    final l10n = L10n.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isDesktop = screenWidth > 600;
@@ -391,7 +407,7 @@ class AppUpdateService {
 
                   // 标题
                   Text(
-                    '已是最新版本',
+                    l10n.appUpdateAlreadyLatestTitle,
                     style: (isDesktop
                             ? theme.textTheme.headlineSmall
                             : theme.textTheme.titleLarge)
@@ -413,10 +429,12 @@ class AppUpdateService {
                     SizedBox(height: isDesktop ? 20.0 : 16.0),
                     Container(
                       width: double.infinity,
-                      constraints: BoxConstraints(maxHeight: maxChangelogHeight),
+                      constraints:
+                          BoxConstraints(maxHeight: maxChangelogHeight),
                       padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withAlpha(128),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: SingleChildScrollView(
@@ -424,7 +442,7 @@ class AppUpdateService {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '当前版本更新内容',
+                              l10n.appUpdateCurrentVersionChanges,
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,
@@ -459,9 +477,9 @@ class AppUpdateService {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        '知道了',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        l10n.appUpdateGotIt,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -475,7 +493,8 @@ class AppUpdateService {
   }
 
   /// 刷新下载链接（下载链接 10 分钟有效，过期后需要重新获取）
-  Future<String?> _refreshDownloadUrl(String currentVersion, String platform) async {
+  Future<String?> _refreshDownloadUrl(
+      String currentVersion, String platform) async {
     try {
       final response = await _apiClient.checkAppVersion(
         currentVersion: currentVersion,
@@ -494,7 +513,7 @@ class _UpdateDialog extends StatefulWidget {
   final bool forceUpdate;
   final String downloadUrl;
   final String? changelog;
-  final Future<String?> Function() refreshDownloadUrl;  // 刷新下载链接的回调
+  final Future<String?> Function() refreshDownloadUrl; // 刷新下载链接的回调
 
   const _UpdateDialog({
     required this.latestVersion,
@@ -509,10 +528,10 @@ class _UpdateDialog extends StatefulWidget {
 }
 
 enum _UpdateState {
-  idle,        // 等待用户点击
+  idle, // 等待用户点击
   downloading, // 下载中
-  downloaded,  // 下载完成
-  error,       // 下载失败
+  downloaded, // 下载完成
+  error, // 下载失败
 }
 
 class _UpdateDialogState extends State<_UpdateDialog> {
@@ -521,9 +540,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   String? _errorMessage;
   String? _downloadedFilePath;
   CancelToken? _cancelToken;
-  bool _allowPop = false;  // 是否允许关闭弹窗（只有按钮点击时才设为true）
-  late String _currentDownloadUrl;  // 当前下载链接（可能会刷新）
-  DateTime? _lastProgressUpdate;  // 上次更新进度的时间
+  bool _allowPop = false; // 是否允许关闭弹窗（只有按钮点击时才设为true）
+  late String _currentDownloadUrl; // 当前下载链接（可能会刷新）
+  DateTime? _lastProgressUpdate; // 上次更新进度的时间
 
   @override
   void initState() {
@@ -566,6 +585,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 开始下载
   Future<void> _startDownload({bool isRetry = false}) async {
+    final l10n = L10n.of(context);
     setState(() {
       _state = _UpdateState.downloading;
       _progress = 0;
@@ -596,7 +616,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             if (shouldUpdate) {
               _lastProgressUpdate = now;
               setState(() {
-                _progress = newProgress >= 1.0 ? 0.99 : newProgress;  // 下载中最多显示 99%
+                _progress =
+                    newProgress >= 1.0 ? 0.99 : newProgress; // 下载中最多显示 99%
               });
             }
           }
@@ -605,7 +626,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
       setState(() {
         _state = _UpdateState.downloaded;
-        _progress = 1.0;  // 下载完成后设为 100%
+        _progress = 1.0; // 下载完成后设为 100%
         _downloadedFilePath = filePath;
       });
     } catch (e) {
@@ -620,7 +641,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       } else {
         setState(() {
           _state = _UpdateState.error;
-          _errorMessage = '下载失败，请重试';
+          _errorMessage = l10n.appUpdateDownloadFailedRetry;
         });
       }
     }
@@ -634,6 +655,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 刷新下载链接并重试
   Future<void> _refreshAndRetry() async {
+    final l10n = L10n.of(context);
     try {
       final newUrl = await widget.refreshDownloadUrl();
       if (newUrl != null && newUrl.isNotEmpty) {
@@ -642,33 +664,34 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       } else {
         setState(() {
           _state = _UpdateState.error;
-          _errorMessage = '获取下载链接失败，请重试';
+          _errorMessage = l10n.appUpdateDownloadLinkFailed;
         });
       }
     } catch (e) {
       setState(() {
         _state = _UpdateState.error;
-        _errorMessage = '获取下载链接失败，请重试';
+        _errorMessage = l10n.appUpdateDownloadLinkFailed;
       });
     }
   }
 
   /// 取消下载（带二次确认）
   Future<void> _cancelDownload() async {
+    final l10n = L10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认取消'),
-        content: const Text('确定要取消下载吗？'),
+        title: Text(l10n.appUpdateCancelConfirmTitle),
+        content: Text(l10n.appUpdateCancelConfirmMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('继续下载'),
+            child: Text(l10n.appUpdateContinueDownload),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              '取消下载',
+              l10n.appUpdateCancelDownload,
               style: TextStyle(color: Theme.of(ctx).colorScheme.error),
             ),
           ),
@@ -683,6 +706,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   /// 安装/打开下载的文件
   Future<void> _installUpdate() async {
     if (_downloadedFilePath == null) return;
+    final l10n = L10n.of(context);
 
     try {
       // Android 8.0+ 需要检查"安装未知应用"权限
@@ -693,7 +717,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           final granted = await _requestInstallPermission();
           if (!granted) {
             setState(() {
-              _errorMessage = '需要开启"安装未知应用"权限才能安装更新';
+              _errorMessage = l10n.appUpdateInstallPermissionRequired;
             });
             return;
           }
@@ -704,7 +728,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       if (result.type != ResultType.done) {
         // 打开失败
         setState(() {
-          _errorMessage = '无法打开文件，请稍后重试';
+          _errorMessage = l10n.appUpdateOpenFileFailed;
         });
         return;
       }
@@ -715,7 +739,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '无法打开文件，请稍后重试';
+        _errorMessage = l10n.appUpdateOpenFileFailed;
       });
     }
   }
@@ -724,7 +748,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   Future<bool> _checkInstallPermission() async {
     try {
       const channel = MethodChannel('com.psygo.app/install');
-      final result = await channel.invokeMethod<bool>('canRequestPackageInstalls');
+      final result =
+          await channel.invokeMethod<bool>('canRequestPackageInstalls');
       return result ?? false;
     } catch (e) {
       // 如果检查失败，假设有权限，让系统处理
@@ -736,7 +761,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   Future<bool> _requestInstallPermission() async {
     try {
       const channel = MethodChannel('com.psygo.app/install');
-      final result = await channel.invokeMethod<bool>('requestInstallPermission');
+      final result =
+          await channel.invokeMethod<bool>('requestInstallPermission');
       return result ?? false;
     } catch (e) {
       return false;
@@ -758,6 +784,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = L10n.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     // PC端（宽度 > 600）使用更大的尺寸
@@ -767,8 +794,10 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final padding = isDesktop ? 36.0 : 24.0;
     final iconSize = isDesktop ? 88.0 : 64.0;
     final iconInnerSize = isDesktop ? 44.0 : 32.0;
-    final titleStyle = isDesktop ? theme.textTheme.headlineMedium : theme.textTheme.titleLarge;
-    final versionStyle = isDesktop ? theme.textTheme.titleLarge : theme.textTheme.titleMedium;
+    final titleStyle =
+        isDesktop ? theme.textTheme.headlineMedium : theme.textTheme.titleLarge;
+    final versionStyle =
+        isDesktop ? theme.textTheme.titleLarge : theme.textTheme.titleMedium;
     final progressHeight = isDesktop ? 8.0 : 6.0;
     final buttonPadding = isDesktop ? 16.0 : 14.0;
     // changelog 最大高度
@@ -804,8 +833,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                       _state == _UpdateState.downloaded
                           ? Icons.check_circle_rounded
                           : isDesktop
-                              ? Icons.downloading_rounded  // PC端用下载图标
-                              : Icons.system_update_rounded,  // 移动端用系统更新图标
+                              ? Icons.downloading_rounded // PC端用下载图标
+                              : Icons.system_update_rounded, // 移动端用系统更新图标
                       color: _state == _UpdateState.downloaded
                           ? Colors.green
                           : theme.colorScheme.primary,
@@ -816,7 +845,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
                   // 标题
                   Text(
-                    _getTitle(),
+                    _getTitle(l10n),
                     style: titleStyle?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -833,14 +862,17 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   ),
 
                   // 更新日志
-                  if (widget.changelog != null && widget.changelog!.isNotEmpty) ...[
+                  if (widget.changelog != null &&
+                      widget.changelog!.isNotEmpty) ...[
                     SizedBox(height: isDesktop ? 16.0 : 12.0),
                     Container(
                       width: double.infinity,
-                      constraints: BoxConstraints(maxHeight: maxChangelogHeight),
+                      constraints:
+                          BoxConstraints(maxHeight: maxChangelogHeight),
                       padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withAlpha(128),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: SingleChildScrollView(
@@ -936,7 +968,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '当前版本过低，请更新后继续使用',
+                              l10n.appUpdateForceUpdateHint,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.error,
                               ),
@@ -949,7 +981,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   SizedBox(height: isDesktop ? 32.0 : 24.0),
 
                   // 按钮
-                  _buildButtons(theme, buttonPadding),
+                  _buildButtons(theme, buttonPadding, l10n),
                 ],
               ),
             ),
@@ -959,20 +991,20 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     );
   }
 
-  String _getTitle() {
+  String _getTitle(L10n l10n) {
     switch (_state) {
       case _UpdateState.idle:
-        return '发现新版本';
+        return l10n.appUpdateTitleNewVersion;
       case _UpdateState.downloading:
-        return '正在下载';
+        return l10n.appUpdateTitleDownloading;
       case _UpdateState.downloaded:
-        return '下载完成';
+        return l10n.appUpdateTitleDownloaded;
       case _UpdateState.error:
-        return '下载失败';
+        return l10n.appUpdateTitleFailed;
     }
   }
 
-  Widget _buildButtons(ThemeData theme, double buttonPadding) {
+  Widget _buildButtons(ThemeData theme, double buttonPadding, L10n l10n) {
     switch (_state) {
       case _UpdateState.idle:
         return Row(
@@ -997,7 +1029,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     ),
                   ),
                   child: Text(
-                    '稍后更新',
+                    l10n.appUpdateLater,
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
@@ -1010,7 +1042,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             // 立即更新按钮
             Expanded(
               child: FilledButton(
-                onPressed: _needsInAppDownload ? _startDownload : _openExternalUrl,
+                onPressed:
+                    _needsInAppDownload ? _startDownload : _openExternalUrl,
                 style: FilledButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: buttonPadding),
                   backgroundColor: theme.colorScheme.primary,
@@ -1018,9 +1051,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  '立即更新',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                child: Text(
+                  l10n.appUpdateNow,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -1031,14 +1064,15 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         return TextButton(
           onPressed: _cancelDownload,
           style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
+            padding:
+                EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
           child: Text(
-            '取消下载',
+            l10n.appUpdateCancelDownload,
             style: TextStyle(
               color: theme.colorScheme.error,
               fontWeight: FontWeight.w600,
@@ -1050,15 +1084,16 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         return FilledButton(
           onPressed: _installUpdate,
           style: FilledButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
+            padding:
+                EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
             backgroundColor: Colors.green,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: const Text(
-            '立即安装',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          child: Text(
+            l10n.appUpdateInstallNow,
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         );
 
@@ -1076,7 +1111,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   ),
                 ),
                 child: Text(
-                  '重试',
+                  l10n.tryAgain,
                   style: TextStyle(
                     color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
@@ -1095,9 +1130,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  '浏览器下载',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                child: Text(
+                  l10n.appUpdateDownloadInBrowser,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),

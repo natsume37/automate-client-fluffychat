@@ -8,6 +8,7 @@ import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -46,7 +47,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除登录状态
       await _clearAuthState();
       if (mounted) {
-        setLoginError('Matrix 凭证缺失，请重新登录');
+        setLoginError(L10n.of(context).authMatrixCredentialsMissing);
         setLoading(false);
       }
       return false;
@@ -129,7 +130,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除登录状态和 Matrix 客户端
       await _clearAuthState();
       if (mounted) {
-        final message = (e as Object).toLocalizedString(
+        final message = e.toLocalizedString(
           context,
           ExceptionContext.matrixLogin,
         );
@@ -173,13 +174,5 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     }
 
     debugPrint('[LoginFlow] Auth state cleared');
-  }
-
-  /// 提取干净的错误消息
-  String _extractErrorMessage(Object e) {
-    if (e is AutomateBackendException) {
-      return e.message;
-    }
-    return e.toString();
   }
 }
