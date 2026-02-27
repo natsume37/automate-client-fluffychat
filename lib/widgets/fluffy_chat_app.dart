@@ -694,11 +694,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Client isLogged: ${client.isLogged()}');
       debugPrint('[AuthGate] Client deviceID: ${client.deviceID}');
 
-      // 确保 client 在 clients 列表中
-      if (!widget.clients.contains(client)) {
-        widget.clients.add(client);
-        debugPrint('[AuthGate] Client added to clients list, length=${widget.clients.length}');
-      }
+      final addedBeforeLogin = matrix.ensureClientRegistered(client);
+      debugPrint(
+        '[AuthGate] Client ${addedBeforeLogin ? 'added to' : 'already in'} clients list, length=${widget.clients.length}',
+      );
 
       // Note: Encryption is disabled for this Matrix server
       // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
@@ -730,15 +729,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         );
         debugPrint('[AuthGate] Matrix login success, deviceID=${client.deviceID}');
 
-        // CRITICAL: Ensure client is in the clients list after successful login
-        // client.init(newToken:...) may not trigger onLoginStateChanged event,
-        // so we need to explicitly add the client to the list here
-        if (!widget.clients.contains(client)) {
-          widget.clients.add(client);
-          debugPrint('[AuthGate] Client added to clients list, length=${widget.clients.length}');
-        } else {
-          debugPrint('[AuthGate] Client already in clients list, length=${widget.clients.length}');
-        }
+        // CRITICAL: Ensure client is in the clients list and subscriptions are active
+        // client.init(newToken:...) may not trigger onLoginStateChanged event.
+        final addedAfterLogin = matrix.ensureClientRegistered(client);
+        debugPrint(
+          '[AuthGate] Client ${addedAfterLogin ? 'added to' : 'already in'} clients list, length=${widget.clients.length}',
+        );
 
         // 设置当前 client 为活跃客户端
         matrix.setActiveClient(client);
@@ -781,11 +777,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Client is already logged in with correct userID, just proceed
       debugPrint('[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}');
 
-      // Ensure client is in the clients list
-      if (!widget.clients.contains(client)) {
-        widget.clients.add(client);
-        debugPrint('[AuthGate] Client added to clients list (already logged in), length=${widget.clients.length}');
-      }
+      final addedAlreadyLogged = matrix.ensureClientRegistered(client);
+      debugPrint(
+        '[AuthGate] Client ${addedAlreadyLogged ? 'added to' : 'already in'} clients list (already logged in), length=${widget.clients.length}',
+      );
 
       // 设置当前 client 为活跃客户端
       matrix.setActiveClient(client);

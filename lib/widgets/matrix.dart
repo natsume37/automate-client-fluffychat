@@ -270,6 +270,17 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     _updatePushState();
   }
 
+  /// Ensure a client is present in the bundle and its subscriptions are active.
+  /// Returns true if the client was newly added to the bundle.
+  bool ensureClientRegistered(Client c) {
+    final exists = widget.clients.any((client) => client.clientName == c.clientName);
+    if (!exists) {
+      widget.clients.add(c);
+    }
+    _registerSubs(c.clientName);
+    return !exists;
+  }
+
   void _registerSubs(String name) {
     final c = getClientByName(name);
     if (c == null) {
@@ -358,36 +369,37 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
-    // 订阅通知事件（桌面端和 Web 使用 Matrix SDK 通知，移动端由阿里云推送统一处理）
-    c.onSync.stream.first.then((s) {
-      if (PlatformInfos.isWeb) {
-        html.Notification.requestPermission();
-      }
-      // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
-      // 避免 Matrix SDK 本地通知和阿里云推送通知重复
-      if (!PlatformInfos.isMobile) {
-        onNotification[name] ??= c.onNotification.stream.listen((event) {
-          if (PlatformInfos.isLinux) {
-            Logs().i(
-              '[LinuxNotify] onNotification room=${event.room.id} event=${event.eventId} type=${event.type}',
-            );
-          }
-          if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
-            return;
-          }
-          if (PlatformInfos.isDesktop) {
-            _trackDesktopNotifiedEvent(event);
-          }
-          showLocalNotification(event);
-        });
-        if (PlatformInfos.isDesktop) {
-          onTimelineEventSub[name] ??= c.onTimelineEvent.stream.listen((event) {
-            // ignore: discarded_futures
-            _handleDesktopBackgroundNotification(c, event);
-          });
+    if (PlatformInfos.isWeb) {
+      unawaited(
+        c.onSync.stream.first.then((_) {
+          html.Notification.requestPermission();
+        }),
+      );
+    }
+    // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
+    // 避免 Matrix SDK 本地通知和阿里云推送通知重复
+    if (!PlatformInfos.isMobile) {
+      onNotification[name] ??= c.onNotification.stream.listen((event) {
+        if (PlatformInfos.isLinux) {
+          Logs().i(
+            '[LinuxNotify] onNotification room=${event.room.id} event=${event.eventId} type=${event.type}',
+          );
         }
+        if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
+          return;
+        }
+        if (PlatformInfos.isDesktop) {
+          _trackDesktopNotifiedEvent(event);
+        }
+        showLocalNotification(event);
+      });
+      if (PlatformInfos.isDesktop) {
+        onTimelineEventSub[name] ??= c.onTimelineEvent.stream.listen((event) {
+          // ignore: discarded_futures
+          _handleDesktopBackgroundNotification(c, event);
+        });
       }
-    });
+    }
   }
 
   void _cancelSubs(String name) {
@@ -411,12 +423,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   bool _isDesktopEventNotified(Event event) {
     final eventId = event.eventId;
-    return eventId != null && _desktopNotifiedEventIds.contains(eventId);
+    return _desktopNotifiedEventIds.contains(eventId);
   }
 
   void _trackDesktopNotifiedEvent(Event event) {
     final eventId = event.eventId;
-    if (eventId == null) return;
     _desktopNotifiedEventIds.add(eventId);
     while (_desktopNotifiedEventIds.length > _desktopNotificationCacheLimit) {
       _desktopNotifiedEventIds.remove(_desktopNotifiedEventIds.first);
