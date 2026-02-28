@@ -3508,12 +3508,14 @@
   "@employeeSlacking": {},
   "employeeSleeping": "Resting",
   "@employeeSleeping": {},
-  "employeeWorkingHint": "Processing tasks.",
+  "employeeWorkingHint": "Processing tasks now.",
   "@employeeWorkingHint": {},
-  "employeeSlackingHint": "Idle and available.",
+  "employeeSlackingHint": "Available for new tasks.",
   "@employeeSlackingHint": {},
-  "employeeSleepingHint": "Resting. Waking the employee may take a moment.",
+  "employeeSleepingHint": "Waking the employee may take a moment.",
   "@employeeSleepingHint": {},
+  "agentWebEntryUnavailable": "This employee currently has no web entry available.",
+  "@agentWebEntryUnavailable": {},
   "employeeOnboarding": "Onboarding...",
   "@employeeOnboarding": {},
   "employeeReady": "Ready",
@@ -3523,9 +3525,9 @@
 
   "startChat": "Start chat",
   "@startChat": {},
-  "deleteEmployee": "Optimize employee",
+  "deleteEmployee": "Dismiss employee",
   "@deleteEmployee": {},
-  "deleteEmployeeConfirm": "Are you sure you want to optimize {name}? This action cannot be undone.",
+  "deleteEmployeeConfirm": "Are you sure you want to dismiss {name}? This action cannot be undone.",
   "@deleteEmployeeConfirm": {
     "type": "String",
     "placeholders": {
@@ -3534,9 +3536,9 @@
       }
     }
   },
-  "employeeDeleted": "Employee optimized",
+  "employeeDeleted": "Employee dismissed",
   "@employeeDeleted": {},
-  "errorDeletingEmployee": "Error optimizing employee",
+  "errorDeletingEmployee": "Error dismissing employee",
   "@errorDeletingEmployee": {},
   "errorStartingChat": "Error starting chat",
   "@errorStartingChat": {},

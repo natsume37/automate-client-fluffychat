@@ -68,8 +68,16 @@
 -dontwarn org.bouncycastle.**
 
 # 小米/OPPO/vivo 厂商通道
+-keep class com.xiaomi.** {*;}
 -dontwarn com.xiaomi.**
+-keep public class * extends android.app.Service
+-keep class com.heytap.** { *; }
+-dontwarn com.heytap.**
 -dontwarn com.coloros.**
 -keep class com.vivo.** { *; }
 -dontwarn com.vivo.**
 -dontwarn com.meizu.**
+
+# 荣耀厂商通道
+-keep class com.hihonor.push.** { *; }
+-dontwarn com.hihonor.**

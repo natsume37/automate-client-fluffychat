@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,7 +31,7 @@ class EmployeesTab extends StatefulWidget {
 }
 
 class EmployeesTabState extends State<EmployeesTab>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final AgentRepository _repository = AgentRepository();
   final ScrollController _scrollController = ScrollController();
 
@@ -42,10 +43,17 @@ class EmployeesTabState extends State<EmployeesTab>
   bool _hasMore = true;
   String? _trialExpiresAt;
   final Set<String> _deletingEmployees = <String>{};
+  int _replaceRequestSeq = 0;
 
   // 轮询定时器：用于检测员工 isReady 状态变化
   Timer? _readyPollingTimer;
   static const Duration _pollingInterval = Duration(seconds: 15);
+
+  // 移动端刷新：进入页面/回到前台时主动刷新，并开启固定轮询
+  Timer? _mobilePollingTimer;
+  static const Duration _mobilePollingInterval = Duration(seconds: 15);
+  bool _isTabVisible = false;
+  bool _isAppInForeground = true;
 
   @override
   bool get wantKeepAlive => true;
@@ -53,17 +61,42 @@ class EmployeesTabState extends State<EmployeesTab>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _isAppInForeground =
+        lifecycle == null || lifecycle == AppLifecycleState.resumed;
     _loadEmployees();
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopMobilePolling();
     _stopReadyPolling();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _repository.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isMobileRealtimeEnabled) return;
+
+    final isForeground = state == AppLifecycleState.resumed;
+    if (_isAppInForeground == isForeground) return;
+    _isAppInForeground = isForeground;
+
+    if (!_isAppInForeground) {
+      _stopMobilePolling();
+      return;
+    }
+
+    if (_isTabVisible) {
+      unawaited(_refreshOnEnter());
+      _startMobilePolling();
+    }
   }
 
   void _onScroll() {
@@ -74,6 +107,7 @@ class EmployeesTabState extends State<EmployeesTab>
   }
 
   Future<void> _loadEmployees() async {
+    final requestSeq = ++_replaceRequestSeq;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -81,7 +115,7 @@ class EmployeesTabState extends State<EmployeesTab>
 
     try {
       final page = await RetryHelper.withRetry(
-        operation: () => _repository.getUserAgents(),
+        operation: () => _repository.getUserAgents(forceRefresh: true),
         maxRetries: 2,
         retryDelayMs: 3000,
         onRetry: (attempt, error) {
@@ -89,32 +123,43 @@ class EmployeesTabState extends State<EmployeesTab>
           debugPrint('Retrying employee list load, attempt $attempt');
         },
       );
-      if (mounted) {
-        setState(() {
-          _employees = page.agents;
-          _nextCursor = page.nextCursor;
-          _hasMore = page.hasNextPage;
-          _trialExpiresAt = page.trialExpiresAt;
-          _isLoading = false;
-        });
-        // 检查是否需要启动/停止轮询
-        _checkAndUpdatePolling();
-      }
+      if (!mounted || requestSeq != _replaceRequestSeq) return;
+
+      setState(() {
+        _employees = page.agents;
+        _nextCursor = page.nextCursor;
+        _hasMore = page.hasNextPage;
+        _trialExpiresAt = page.trialExpiresAt;
+        _isLoading = false;
+      });
+      // 检查是否需要启动/停止轮询
+      _checkAndUpdatePolling();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toLocalizedString(
-            context,
-            ExceptionContext.loadEmployeeList,
-          );
-          _isLoading = false;
-        });
-      }
+      if (!mounted || requestSeq != _replaceRequestSeq) return;
+
+      setState(() {
+        _error = e.toLocalizedString(
+          context,
+          ExceptionContext.loadEmployeeList,
+        );
+        _isLoading = false;
+      });
     }
   }
 
   /// 检查是否有员工处于 isReady=false 状态，决定是否启动轮询
   void _checkAndUpdatePolling() {
+    // 移动端使用固定轮询，不启用 isReady 轮询
+    if (_isMobileRealtimeEnabled) {
+      if (_isTabVisible && _isAppInForeground) {
+        _startMobilePolling();
+      } else {
+        _stopMobilePolling();
+      }
+      _stopReadyPolling();
+      return;
+    }
+
     final hasUnreadyEmployees = _employees.any((e) => !e.isReady);
 
     if (hasUnreadyEmployees) {
@@ -146,36 +191,106 @@ class EmployeesTabState extends State<EmployeesTab>
   /// 静默刷新（不显示加载状态，用于轮询）
   /// 只更新现有员工的状态，不覆盖分页数据
   Future<void> _refreshSilently() async {
+    final requestSeq = ++_replaceRequestSeq;
     try {
-      final page = await _repository.getUserAgents();
-      if (mounted) {
-        // 只更新已存在员工的 isReady 状态，保留分页数据
-        final updatedMap = {for (final e in page.agents) e.agentId: e};
-        setState(() {
-          _employees = _employees.map((e) {
-            final updated = updatedMap[e.agentId];
-            // 如果在最新数据中找到了这个员工，用新数据替换（主要是更新 isReady）
-            return updated ?? e;
-          }).toList();
-        });
-        // 刷新后检查是否需要继续轮询
-        _checkAndUpdatePolling();
-      }
+      final page = await _repository.getUserAgents(forceRefresh: true);
+      if (!mounted || requestSeq != _replaceRequestSeq) return;
+
+      // 只更新已存在员工的 isReady 状态，保留分页数据
+      final updatedMap = {for (final e in page.agents) e.agentId: e};
+      setState(() {
+        _employees = _employees.map((e) {
+          final updated = updatedMap[e.agentId];
+          // 如果在最新数据中找到了这个员工，用新数据替换（主要是更新 isReady）
+          return updated ?? e;
+        }).toList();
+      });
+      // 刷新后检查是否需要继续轮询
+      _checkAndUpdatePolling();
     } catch (e) {
       // 静默刷新失败不影响 UI
     }
   }
 
+  bool get _isMobileRealtimeEnabled => PlatformInfos.isMobile;
+
+  /// TeamPage 在 Tab 切换时调用：用于触发进入页面时刷新
+  void onTabVisibilityChanged(bool visible) {
+    if (_isTabVisible == visible) return;
+    _isTabVisible = visible;
+
+    if (!_isMobileRealtimeEnabled) return;
+
+    if (_isTabVisible && _isAppInForeground) {
+      unawaited(_refreshOnEnter());
+      _startMobilePolling();
+    } else {
+      _stopMobilePolling();
+    }
+  }
+
+  void _startMobilePolling() {
+    if (!_isMobileRealtimeEnabled || !_isTabVisible || !_isAppInForeground) {
+      return;
+    }
+    if (_mobilePollingTimer != null && _mobilePollingTimer!.isActive) {
+      return;
+    }
+
+    _mobilePollingTimer = Timer.periodic(_mobilePollingInterval, (_) {
+      if (!mounted || !_isTabVisible || !_isAppInForeground) return;
+      unawaited(_refreshOnEnter());
+    });
+  }
+
+  void _stopMobilePolling() {
+    _mobilePollingTimer?.cancel();
+    _mobilePollingTimer = null;
+  }
+
+  /// 进入员工页时的主动刷新（不展示 loading 骨架）
+  Future<void> _refreshOnEnter() async {
+    if (_isLoading || _isLoadingMore) return;
+    final requestSeq = ++_replaceRequestSeq;
+
+    try {
+      final page = await _repository.getUserAgents(forceRefresh: true);
+      if (!mounted || requestSeq != _replaceRequestSeq) return;
+
+      setState(() {
+        _employees = page.agents;
+        _nextCursor = page.nextCursor;
+        _hasMore = page.hasNextPage;
+        _trialExpiresAt = page.trialExpiresAt;
+        _error = null;
+      });
+      _checkAndUpdatePolling();
+    } catch (_) {
+      // 进入时静默刷新失败不打断页面使用
+    }
+  }
+
   Future<void> _loadMore() async {
     if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    final replaceSeqAtStart = _replaceRequestSeq;
 
     setState(() {
       _isLoadingMore = true;
     });
 
     try {
-      final page = await _repository.getUserAgents(cursor: _nextCursor);
+      final page = await _repository.getUserAgents(
+        cursor: _nextCursor,
+        forceRefresh: true,
+      );
       if (mounted) {
+        if (replaceSeqAtStart != _replaceRequestSeq) {
+          setState(() {
+            _isLoadingMore = false;
+          });
+          return;
+        }
+
         setState(() {
           _employees.addAll(page.agents);
           _nextCursor = page.nextCursor;
@@ -320,7 +435,7 @@ class EmployeesTabState extends State<EmployeesTab>
           ),
         ),
         const PopupMenuDivider(),
-        // 优化（删除）
+        // 辞退（删除）
         PopupMenuItem<String>(
           value: 'delete',
           enabled: deleteEnabled,
@@ -420,7 +535,7 @@ class EmployeesTabState extends State<EmployeesTab>
     }
   }
 
-  /// 确认优化对话框
+  /// 确认辞退对话框
   Future<void> _confirmDeleteEmployee(Agent employee) async {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
@@ -499,7 +614,7 @@ class EmployeesTabState extends State<EmployeesTab>
     }
   }
 
-  /// 优化员工
+  /// 辞退员工
   Future<void> _deleteEmployee(Agent employee) async {
     if (_deletingEmployees.contains(employee.agentId)) {
       return;
@@ -631,11 +746,10 @@ class EmployeesTabState extends State<EmployeesTab>
             icon: Icons.people_outline,
             title: l10n.noEmployeesYet,
             subtitle: l10n.noEmployeesHint,
-            actionLabel: l10n.hireFirstEmployee,
-            onAction: () {
-              // 切换到招聘 Tab
-              widget.onNavigateToRecruit?.call();
-            },
+            actionLabel: widget.onNavigateToRecruit == null
+                ? null
+                : l10n.hireFirstEmployee,
+            onAction: widget.onNavigateToRecruit,
           ),
         ),
       );
@@ -653,7 +767,7 @@ class EmployeesTabState extends State<EmployeesTab>
           final availableWidth = constraints.maxWidth - 32; // 减去左右 padding
 
           // 计算列数（至少 2 列，最多 5 列）
-          int crossAxisCount = (availableWidth / minCardWidth).floor();
+          var crossAxisCount = (availableWidth / minCardWidth).floor();
           crossAxisCount = crossAxisCount.clamp(2, 5);
 
           // 计算实际卡片宽度

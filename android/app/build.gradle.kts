@@ -42,6 +42,13 @@ dependencies {
     implementation(files("libs/auth_number_product-2.14.14-log-online-standard-cuum-release.aar"))
     implementation(files("libs/logger-2.2.2-release.aar"))
     implementation(files("libs/main-2.2.3-release.aar"))
+
+    // 阿里云推送厂商通道 SDK
+    implementation("com.aliyun.ams:alicloud-android-third-push:3.9.1")
+    implementation("com.aliyun.ams:alicloud-android-third-push-xiaomi:3.9.0")
+    implementation("com.aliyun.ams:alicloud-android-third-push-vivo:3.9.0")
+    implementation("com.aliyun.ams:alicloud-android-third-push-honor:3.9.0")
+    implementation("com.aliyun.ams:alicloud-android-third-push-oppo:3.9.0")
 }
 
 
@@ -84,8 +91,13 @@ android {
     val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
     // 从 dart-define 读取 app 名称
     val appName = getDartDefine("APP_NAME") ?: "Psygo"
-    val vivoAppId = getDartDefine("VIVO_APP_ID") ?: "106014439"
-    val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: "dc64a38d94ecff572fc1122a1a753520"
+    val vivoAppId = getDartDefine("VIVO_APP_ID") ?: ""
+    val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: ""
+    val xiaomiAppId = getDartDefine("XIAOMI_APP_ID") ?: ""
+    val xiaomiAppKey = getDartDefine("XIAOMI_APP_KEY") ?: ""
+    val honorAppId = getDartDefine("HONOR_APP_ID") ?: ""
+    val oppoAppKey = getDartDefine("OPPO_APP_KEY") ?: ""
+    val oppoAppSecret = getDartDefine("OPPO_APP_SECRET") ?: ""
 
     defaultConfig {
         applicationId = "com.creativekoalas.psygo$appIdSuffix"
@@ -98,6 +110,11 @@ android {
         manifestPlaceholders["appName"] = appName
         manifestPlaceholders["VIVO_APP_ID"] = vivoAppId
         manifestPlaceholders["VIVO_API_KEY"] = vivoApiKey
+        manifestPlaceholders["XIAOMI_APP_ID"] = xiaomiAppId
+        manifestPlaceholders["XIAOMI_APP_KEY"] = xiaomiAppKey
+        manifestPlaceholders["HONOR_APP_ID"] = honorAppId
+        manifestPlaceholders["OPPO_APP_KEY"] = oppoAppKey
+        manifestPlaceholders["OPPO_APP_SECRET"] = oppoAppSecret
     }
 
     signingConfigs {

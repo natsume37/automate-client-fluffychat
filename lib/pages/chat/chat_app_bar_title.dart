@@ -26,11 +26,24 @@ class ChatAppBarTitle extends StatefulWidget {
 }
 
 class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
+  /// 开发预览：
+  /// --dart-define=PREVIEW_EMPLOYEE_STATUS=cycle
+  ///   在 UI 中显示切换按钮，可循环预览多种状态
+  static const String _previewEmployeeStatus =
+      String.fromEnvironment('PREVIEW_EMPLOYEE_STATUS', defaultValue: '');
+  static const List<String> _previewStatusCycleModes = <String>[
+    'auto',
+    'working',
+    'slacking',
+    'resting',
+  ];
+
   /// 员工信息（如果对方是员工）
   Agent? _employee;
 
   /// 轮询定时器
   Timer? _pollingTimer;
+  int _previewCycleIndex = 0;
 
   /// 轮询间隔
   static const _pollingInterval = Duration(seconds: 10);
@@ -147,6 +160,9 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     }
 
     final theme = Theme.of(context);
+    final showPreviewStatusButton = _isInteractivePreviewEnabled &&
+        room.directChatMatrixID != null &&
+        _employee != null;
     final onProfileTap = controller.isArchived
         ? null
         : () => FluffyThemes.isThreeColumnMode(context)
@@ -173,26 +189,36 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                InkWell(
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: onProfileTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(
-                      room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                        letterSpacing: -0.2,
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        hoverColor: Colors.transparent,
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: onProfileTap,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    if (showPreviewStatusButton) ...[
+                      const SizedBox(width: 6),
+                      _buildPreviewStatusButton(context),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 // 私聊：显示员工工作状态或在线状态
@@ -263,7 +289,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
-    final status = employee.computedWorkStatus;
+    final status = _resolveDisplayedWorkStatus(employee.computedWorkStatus);
     final statusText = _getWorkStatusText(l10n, status);
     final statusHint = _getWorkStatusHint(l10n, status);
     final dotColor = _getWorkStatusColor(status);
@@ -287,22 +313,59 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
           ),
         ),
         const SizedBox(width: 6),
+        Text(
+          statusText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 8),
         Flexible(
-          child: Text(
-            statusText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w400,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: dotColor.withAlpha(30),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: InkWell(
+              onTap: () => _showFullStatusHint(context, statusHint),
+              borderRadius: BorderRadius.circular(999),
+              child: Text(
+                statusHint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: dotColor,
+                  fontWeight: FontWeight.w600,
+                  height: 1.1,
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 4),
-        _StatusHint(message: statusHint),
       ],
     );
+  }
+
+  Future<void> _showFullStatusHint(
+    BuildContext context,
+    String hint,
+  ) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(hint),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+        ),
+      );
   }
 
   String _getWorkStatusText(L10n l10n, String status) {
@@ -314,6 +377,78 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       default:
         return '😴 ${l10n.employeeSleeping}';
     }
+  }
+
+  String _resolveDisplayedWorkStatus(String fallbackStatus) {
+    if (_isInteractivePreviewEnabled) {
+      final mode = _previewStatusCycleModes[_previewCycleIndex];
+      return mode == 'auto' ? fallbackStatus : mode;
+    }
+    return fallbackStatus;
+  }
+
+  bool get _isInteractivePreviewEnabled =>
+      _previewEmployeeStatus.trim().toLowerCase() == 'cycle';
+
+  void _cyclePreviewStatus() {
+    setState(() {
+      _previewCycleIndex = (_previewCycleIndex + 1) % _previewStatusCycleModes.length;
+    });
+  }
+
+  String _previewStatusLabel(L10n l10n, String status) {
+    switch (status) {
+      case 'working':
+        return l10n.employeeWorking;
+      case 'slacking':
+        return l10n.employeeSlacking;
+      case 'resting':
+        return l10n.employeeSleeping;
+      default:
+        return 'AUTO';
+    }
+  }
+
+  Widget _buildPreviewStatusButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final currentMode = _previewStatusCycleModes[_previewCycleIndex];
+    final label = _previewStatusLabel(l10n, currentMode);
+
+    return Tooltip(
+      message: '预览状态: $label（点击切换）',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: _cyclePreviewStatus,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 10,
+                color: theme.colorScheme.outline,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _getWorkStatusHint(L10n l10n, String status) {
@@ -350,7 +485,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                 status.status != SyncStatus.error &&
                 room.client.prevBatch != null);
         return AnimatedSize(
-          duration: FluffyThemes.animationDuration,
+          duration: FluffyThemes.durationFast,
           child: hide
               ? PresenceBuilder(
                   userId: room.directChatMatrixID,
@@ -407,135 +542,6 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                 ),
         );
       },
-    );
-  }
-}
-
-class _StatusHint extends StatefulWidget {
-  final String message;
-
-  const _StatusHint({required this.message});
-
-  @override
-  State<_StatusHint> createState() => _StatusHintState();
-}
-
-class _StatusHintState extends State<_StatusHint> {
-  OverlayEntry? _entry;
-  Timer? _hideTimer;
-
-  void _showTooltip({bool autoHide = false}) {
-    _hideTimer?.cancel();
-    if (_entry != null) {
-      if (autoHide) {
-        _scheduleHide();
-      }
-      return;
-    }
-
-    final overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return;
-    }
-
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached) {
-      return;
-    }
-
-    final target = box.localToGlobal(Offset.zero);
-    final size = box.size;
-    final message = widget.message;
-
-    _entry = OverlayEntry(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final screenSize = MediaQuery.of(context).size;
-        const maxWidth = 240.0;
-        final rightSpace = screenSize.width - (target.dx + size.width + 8);
-        var left = target.dx + size.width + 8;
-        if (rightSpace < maxWidth) {
-          left = target.dx - maxWidth - 8;
-        }
-        if (left < 8) {
-          left = 8;
-        }
-        var top = target.dy + size.height / 2 - 16;
-        if (top < 8) {
-          top = 8;
-        }
-
-        return Positioned(
-          left: left,
-          top: top,
-          child: IgnorePointer(
-            child: Material(
-              color: theme.colorScheme.surfaceContainerHighest,
-              elevation: 6,
-              shadowColor: Colors.black.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxWidth),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Text(
-                    message,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    overlay.insert(_entry!);
-    if (autoHide) {
-      _scheduleHide();
-    }
-  }
-
-  void _scheduleHide() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(
-      const Duration(seconds: 3),
-      _hideTooltip,
-    );
-  }
-
-  void _hideTooltip() {
-    _hideTimer?.cancel();
-    _hideTimer = null;
-    _entry?.remove();
-    _entry = null;
-  }
-
-  @override
-  void dispose() {
-    _hideTooltip();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.help,
-      onEnter: (_) => _showTooltip(),
-      onExit: (_) => _hideTooltip(),
-      child: GestureDetector(
-        onTap: () => _showTooltip(autoHide: true),
-        behavior: HitTestBehavior.opaque,
-        child: Icon(
-          Icons.info_outline_rounded,
-          size: 12,
-          color: theme.colorScheme.outline,
-        ),
-      ),
     );
   }
 }

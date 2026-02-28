@@ -140,9 +140,7 @@ class ChatView extends StatelessWidget {
                 tooltip: controller.webEntryOpen ? '返回聊天' : '打开 WebView',
                 onPressed: controller.webEntryOpen || controller.webEntryLoading
                     ? controller.closeWebEntry
-                    : (agent.webEntryEnabled
-                        ? () => controller.openWebEntry()
-                        : null),
+                    : () => controller.openWebEntry(),
                 icon: controller.webEntryLoading
                     ? const SizedBox(
                         width: 20,
@@ -355,8 +353,10 @@ class ChatView extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           foregroundColor: theme.colorScheme.primary,
                           elevation: 0,
-                          child: const Icon(Icons.arrow_downward_rounded,
-                              size: 20),
+                          child: const Icon(
+                            Icons.arrow_downward_rounded,
+                            size: 20,
+                          ),
                         ),
                       ),
                     )
@@ -393,14 +393,16 @@ class ChatView extends StatelessWidget {
                             child: controller.webEntryOpen &&
                                     controller.webEntryUrl != null
                                 ? AgentWebEntryView(
-                                    url: controller.webEntryUrl!)
+                                    url: controller.webEntryUrl!,
+                                  )
                                 : Stack(
                                     children: [
                                       GestureDetector(
                                         onTap:
                                             controller.clearSingleSelectedEvent,
                                         child: ChatEventList(
-                                            controller: controller),
+                                          controller: controller,
+                                        ),
                                       ),
                                       // Scroll to last read position button
                                       if (controller
@@ -564,7 +566,8 @@ class ChatView extends StatelessWidget {
                                       ),
                                       // AI 内容免责声明（在 Material 外面，但在 Container margin 里面）
                                       _AiContentDisclaimer(
-                                          room: controller.room),
+                                        room: controller.room,
+                                      ),
                                     ],
                                   ),
                                 ),

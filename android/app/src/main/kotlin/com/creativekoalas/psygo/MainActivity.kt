@@ -63,8 +63,14 @@ class MainActivity : FlutterActivity() {
         // 创建阿里云推送通知渠道（Android 8.0+）
         createNotificationChannel()
 
-        // 注册一键登录插件
-        flutterEngine.plugins.add(OneClickLoginPlugin())
+        // 复用同一个 FlutterEngine 时，configureFlutterEngine 可能被重复调用。
+        // 插件注册需要幂等，避免 "plugin ... already registered" 警告。
+        if (!flutterEngine.plugins.has(OneClickLoginPlugin::class.java)) {
+            flutterEngine.plugins.add(OneClickLoginPlugin())
+            Log.d(TAG, "OneClickLoginPlugin registered")
+        } else {
+            Log.d(TAG, "OneClickLoginPlugin already registered, skipping")
+        }
 
         // 注册应用控制 channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_CONTROL_CHANNEL).setMethodCallHandler { call, result ->

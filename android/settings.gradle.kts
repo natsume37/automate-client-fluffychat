@@ -23,7 +23,17 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
     if (file("app/google-services.json").exists()) {
         id("com.google.gms.google-services") version "4.3.8" apply false
-    } 
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        // 荣耀推送 SDK Maven 仓库
+        maven { url = uri("https://developer.hihonor.com/repo") }
+    }
 }
 
 include(":app")

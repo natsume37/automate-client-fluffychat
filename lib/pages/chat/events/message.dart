@@ -79,6 +79,31 @@ class Message extends StatelessWidget {
     super.key,
   });
 
+  ({Uri? avatarUrl, String displayName}) _resolveSenderPresentation(User user) {
+    final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+    final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
+
+    String normalizeDisplayName(String candidate) {
+      final trimmed = candidate.trim();
+      if (trimmed.isEmpty || trimmed == user.id) {
+        return user.id.localpart ?? user.id;
+      }
+      return trimmed;
+    }
+
+    if (agent != null) {
+      return (
+        avatarUrl: agentAvatarUri ?? user.avatarUrl,
+        displayName: normalizeDisplayName(agent.displayName),
+      );
+    }
+
+    return (
+      avatarUrl: user.avatarUrl,
+      displayName: normalizeDisplayName(user.calcDisplayname()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -134,8 +159,9 @@ class Message extends StatelessWidget {
         ownMessage ? MainAxisAlignment.end : MainAxisAlignment.start;
 
     final displayEvent = event.getDisplayEvent(timeline);
-    final roundedCorner = Radius.circular(FluffyThemes.radiusLg);
-    final borderRadius = BorderRadius.all(roundedCorner);
+    const borderRadius = BorderRadius.all(
+      Radius.circular(FluffyThemes.radiusLg),
+    );
     final noBubble = ({
               MessageTypes.Video,
               MessageTypes.Image,
@@ -232,11 +258,14 @@ class Message extends StatelessWidget {
               if ((displayTime || selected) && !PlatformInfos.isDesktop)
                 Padding(
                   padding: displayTime
-                      ? const EdgeInsets.symmetric(vertical: FluffyThemes.spacing8)
+                      ? const EdgeInsets.symmetric(
+                          vertical: FluffyThemes.spacing8,
+                        )
                       : EdgeInsets.zero,
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: FluffyThemes.spacing4),
+                      padding:
+                          const EdgeInsets.only(top: FluffyThemes.spacing4),
                       child: Material(
                         borderRadius:
                             BorderRadius.circular(FluffyThemes.radiusXl),
@@ -250,7 +279,8 @@ class Message extends StatelessWidget {
                           child: Text(
                             event.originServerTs.localizedTime(context),
                             style: TextStyle(
-                              fontSize: FluffyThemes.fontSizeSm * AppSettings.fontSizeFactor.value,
+                              fontSize: FluffyThemes.fontSizeSm *
+                                  AppSettings.fontSizeFactor.value,
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.secondary,
                             ),
@@ -290,7 +320,8 @@ class Message extends StatelessWidget {
                                     FluffyThemes.radiusMd,
                                   ),
                                   // PC 端选择模式下，选择高亮在外层显示
-                                  color: (longPressSelect && PlatformInfos.isDesktop)
+                                  color: (longPressSelect &&
+                                          PlatformInfos.isDesktop)
                                       ? Colors.transparent
                                       : (selected || highlightMarker
                                           ? theme.colorScheme.secondaryContainer
@@ -352,21 +383,11 @@ class Message extends StatelessWidget {
                                       builder: (context, snapshot) {
                                         final user = snapshot.data ??
                                             event.senderFromMemoryOrFallback;
-                                        // 优先使用员工头像
-                                        final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
-                                        final Uri? avatarUrl;
-                                        final String displayName;
-                                        if (agentAvatarUri != null) {
-                                          final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-                                          avatarUrl = agentAvatarUri;
-                                          displayName = agent!.displayName;
-                                        } else {
-                                          avatarUrl = user.avatarUrl;
-                                          displayName = user.calcDisplayname();
-                                        }
+                                        final sender =
+                                            _resolveSenderPresentation(user);
                                         return Avatar(
-                                          mxContent: avatarUrl,
-                                          name: displayName,
+                                          mxContent: sender.avatarUrl,
+                                          name: sender.displayName,
                                           onTap: () =>
                                               showMemberActionsPopupMenu(
                                             context: context,
@@ -389,22 +410,15 @@ class Message extends StatelessWidget {
                                             future: event.fetchSenderUser(),
                                             builder: (context, snapshot) {
                                               final user = snapshot.data ??
-                                                  event.senderFromMemoryOrFallback;
-                                              // 优先使用员工头像
-                                              final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
-                                              final Uri? avatarUrl;
-                                              final String displayName;
-                                              if (agentAvatarUri != null) {
-                                                final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-                                                avatarUrl = agentAvatarUri;
-                                                displayName = agent!.displayName;
-                                              } else {
-                                                avatarUrl = user.avatarUrl;
-                                                displayName = user.calcDisplayname();
-                                              }
+                                                  event
+                                                      .senderFromMemoryOrFallback;
+                                              final sender =
+                                                  _resolveSenderPresentation(
+                                                user,
+                                              );
                                               return Avatar(
-                                                mxContent: avatarUrl,
-                                                name: displayName,
+                                                mxContent: sender.avatarUrl,
+                                                name: sender.displayName,
                                                 onTap: () =>
                                                     showMemberActionsPopupMenu(
                                                   context: context,
@@ -439,12 +453,14 @@ class Message extends StatelessWidget {
                                                         event.fetchSenderUser(),
                                                     builder:
                                                         (context, snapshot) {
-                                                      final displayname = snapshot
-                                                              .data
-                                                              ?.calcDisplayname() ??
+                                                      final user = snapshot
+                                                              .data ??
                                                           event
-                                                              .senderFromMemoryOrFallback
-                                                              .calcDisplayname();
+                                                              .senderFromMemoryOrFallback;
+                                                      final displayname =
+                                                          _resolveSenderPresentation(
+                                                        user,
+                                                      ).displayName;
                                                       return Text(
                                                         displayname,
                                                         style: TextStyle(
@@ -508,22 +524,24 @@ class Message extends StatelessWidget {
                                                           event.status.isSending
                                                       ? 0.5
                                                       : 1,
-                                              duration: FluffyThemes
-                                                  .durationFast,
-                                              curve:
-                                                  FluffyThemes.curveStandard,
+                                              duration:
+                                                  FluffyThemes.durationFast,
+                                              curve: FluffyThemes.curveStandard,
                                               child: Container(
                                                 decoration: BoxDecoration(
                                                   color: noBubble
                                                       ? Colors.transparent
                                                       : color,
                                                   borderRadius: borderRadius,
-                                                  boxShadow: noBubble || !ownMessage
-                                                      ? null
-                                                      : FluffyThemes.shadow(
-                                                          context,
-                                                          elevation: FluffyThemes.elevationSm,
-                                                        ),
+                                                  boxShadow:
+                                                      noBubble || !ownMessage
+                                                          ? null
+                                                          : FluffyThemes.shadow(
+                                                              context,
+                                                              elevation:
+                                                                  FluffyThemes
+                                                                      .elevationSm,
+                                                            ),
                                                 ),
                                                 clipBehavior: Clip.antiAlias,
                                                 child: BubbleBackground(
@@ -543,9 +561,14 @@ class Message extends StatelessWidget {
                                                       ),
                                                     ),
                                                     constraints: BoxConstraints(
-                                                      maxWidth: PlatformInfos.isDesktop
-                                                          ? FluffyThemes.columnWidth * 1.8
-                                                          : FluffyThemes.columnWidth * 1.5,
+                                                      maxWidth: PlatformInfos
+                                                              .isDesktop
+                                                          ? FluffyThemes
+                                                                  .columnWidth *
+                                                              1.8
+                                                          : FluffyThemes
+                                                                  .columnWidth *
+                                                              1.5,
                                                     ),
                                                     child: Column(
                                                       mainAxisSize:
@@ -707,8 +730,8 @@ class Message extends StatelessWidget {
                                               : Alignment.bottomLeft,
                                           child: AnimatedSize(
                                             duration:
-                                                FluffyThemes.animationDuration,
-                                            curve: FluffyThemes.animationCurve,
+                                                FluffyThemes.durationFast,
+                                            curve: FluffyThemes.curveStandard,
                                             child: showReactionPicker
                                                 ? Padding(
                                                     padding:
@@ -916,8 +939,8 @@ class Message extends StatelessWidget {
                 },
               ),
               AnimatedSize(
-                duration: FluffyThemes.animationDuration,
-                curve: FluffyThemes.animationCurve,
+                duration: FluffyThemes.durationFast,
+                curve: FluffyThemes.curveStandard,
                 alignment: Alignment.bottomCenter,
                 child: !showReceiptsRow
                     ? const SizedBox.shrink()
@@ -932,8 +955,8 @@ class Message extends StatelessWidget {
               ),
               if (enterThread != null)
                 AnimatedSize(
-                  duration: FluffyThemes.animationDuration,
-                  curve: FluffyThemes.animationCurve,
+                  duration: FluffyThemes.durationFast,
+                  curve: FluffyThemes.curveStandard,
                   alignment: Alignment.bottomCenter,
                   child: threadChildren.isEmpty
                       ? const SizedBox.shrink()

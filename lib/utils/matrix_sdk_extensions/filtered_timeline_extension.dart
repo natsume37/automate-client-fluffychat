@@ -54,8 +54,16 @@ extension IsStateExtension on Event {
       }.contains(type);
 
   bool get isKnownHiddenStates =>
+      isMembershipNoiseState ||
       {
         PollEventContent.responseType,
       }.contains(type) ||
       type.startsWith('m.key.verification.');
+
+  bool get isMembershipNoiseState {
+    if (type != EventTypes.RoomMember) return false;
+    final membership = content['membership'];
+    return membership == Membership.join.name ||
+        membership == Membership.invite.name;
+  }
 }

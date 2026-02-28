@@ -187,6 +187,7 @@ class ChatController extends State<ChatPageWithRoom>
     final l10n = L10n.of(context);
 
     if (!agent.webEntryEnabled) {
+      final l10n = L10n.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.chatWebEntryNotEnabled)),
       );
@@ -1586,7 +1587,7 @@ class ChatController extends State<ChatPageWithRoom>
     }
     await scrollController.scrollToIndex(
       eventIndex + 1,
-      duration: FluffyThemes.animationDuration,
+      duration: FluffyThemes.durationFast,
       preferPosition: AutoScrollPosition.middle,
     );
     _updateScrollController();

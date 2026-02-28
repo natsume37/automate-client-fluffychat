@@ -22,8 +22,10 @@ import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/init_with_restore.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/push_state_reporter.dart';
 import 'package:psygo/utils/uia_request_manager.dart';
 import 'package:psygo/utils/voip_plugin.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -189,6 +191,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   static const int _desktopNotificationCacheLimit = 200;
   final onLoginStateChanged = <String, StreamSubscription<LoginState>>{};
   final onUiaRequest = <String, StreamSubscription<UiaRequest>>{};
+  final Map<String, Future<void>> _pushRegistrationTasks = {};
   StreamSubscription<html.Event>? onFocusSub;
   StreamSubscription<html.Event>? onBlurSub;
 
@@ -215,15 +218,67 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     return route.split('/')[2];
   }
 
-  final linuxNotifications =
-      PlatformInfos.isLinux ? NotificationsClient() : null;
+  void _onRouteChanged() {
+    _updatePushState();
+  }
+
+  void _updatePushState() {
+    if (!PlatformInfos.isMobile) return;
+    final currentClient = clientOrNull;
+    if (currentClient == null || !currentClient.isLogged()) return;
+    final matrixUserId = currentClient.userID;
+    if (matrixUserId == null || matrixUserId.isEmpty) return;
+
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    final isForeground =
+        lifecycle == null || lifecycle == AppLifecycleState.resumed;
+
+    PushStateReporter.instance.updateState(
+      isForeground: isForeground,
+      activeRoomId: activeRoomId,
+      matrixUserId: matrixUserId,
+      deviceId: AliyunPushService.instance.deviceId,
+      pushKey: AliyunPushService.instance.pushKey,
+    );
+  }
+
+  NotificationsClient? _linuxNotifications;
+
+  NotificationsClient? get linuxNotifications {
+    if (!PlatformInfos.isLinux) return null;
+    _linuxNotifications ??= NotificationsClient();
+    return _linuxNotifications;
+  }
+
+  void resetLinuxNotifications() {
+    if (!PlatformInfos.isLinux) return;
+    try {
+      _linuxNotifications?.close();
+    } catch (_) {}
+    _linuxNotifications = NotificationsClient();
+  }
   final Map<String, int> linuxNotificationIds = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (PlatformInfos.isMobile) {
+      PsygoApp.router.routeInformationProvider.addListener(_onRouteChanged);
+    }
     initMatrix();
+    _updatePushState();
+  }
+
+  /// Ensure a client is present in the bundle and its subscriptions are active.
+  /// Returns true if the client was newly added to the bundle.
+  bool ensureClientRegistered(Client c) {
+    final exists = widget.clients.any((client) => client.clientName == c.clientName);
+    if (!exists) {
+      widget.clients.add(c);
+    }
+    _registerSubs(c.clientName);
+    return !exists;
   }
 
   void _registerSubs(String name) {
@@ -287,8 +342,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         AgentService.instance.refresh();
         // 移动端注册推送
         if (PlatformInfos.isMobile) {
-          _registerAliyunPushAfterLogin(c);
+          unawaited(ensureAliyunPushRegistered(c));
         }
+        _updatePushState();
       }
       if (loggedInWithMultipleClients && state != LoginState.loggedIn) {
         ScaffoldMessenger.of(
@@ -313,31 +369,37 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
-    // 订阅通知事件（桌面端和 Web 使用 Matrix SDK 通知，移动端由阿里云推送统一处理）
-    c.onSync.stream.first.then((s) {
-      if (PlatformInfos.isWeb) {
-        html.Notification.requestPermission();
-      }
-      // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
-      // 避免 Matrix SDK 本地通知和阿里云推送通知重复
-      if (!PlatformInfos.isMobile) {
-        onNotification[name] ??= c.onNotification.stream.listen((event) {
-          if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
-            return;
-          }
-          if (PlatformInfos.isDesktop) {
-            _trackDesktopNotifiedEvent(event);
-          }
-          showLocalNotification(event);
-        });
-        if (PlatformInfos.isDesktop) {
-          onTimelineEventSub[name] ??= c.onTimelineEvent.stream.listen((event) {
-            // ignore: discarded_futures
-            _handleDesktopBackgroundNotification(c, event);
-          });
+    if (PlatformInfos.isWeb) {
+      unawaited(
+        c.onSync.stream.first.then((_) {
+          html.Notification.requestPermission();
+        }),
+      );
+    }
+    // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
+    // 避免 Matrix SDK 本地通知和阿里云推送通知重复
+    if (!PlatformInfos.isMobile) {
+      onNotification[name] ??= c.onNotification.stream.listen((event) {
+        if (PlatformInfos.isLinux) {
+          Logs().i(
+            '[LinuxNotify] onNotification room=${event.room.id} event=${event.eventId} type=${event.type}',
+          );
         }
+        if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
+          return;
+        }
+        if (PlatformInfos.isDesktop) {
+          _trackDesktopNotifiedEvent(event);
+        }
+        showLocalNotification(event);
+      });
+      if (PlatformInfos.isDesktop) {
+        onTimelineEventSub[name] ??= c.onTimelineEvent.stream.listen((event) {
+          // ignore: discarded_futures
+          _handleDesktopBackgroundNotification(c, event);
+        });
       }
-    });
+    }
   }
 
   void _cancelSubs(String name) {
@@ -361,12 +423,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   bool _isDesktopEventNotified(Event event) {
     final eventId = event.eventId;
-    return eventId != null && _desktopNotifiedEventIds.contains(eventId);
+    return _desktopNotifiedEventIds.contains(eventId);
   }
 
   void _trackDesktopNotifiedEvent(Event event) {
     final eventId = event.eventId;
-    if (eventId == null) return;
     _desktopNotifiedEventIds.add(eventId);
     while (_desktopNotifiedEventIds.length > _desktopNotificationCacheLimit) {
       _desktopNotifiedEventIds.remove(_desktopNotifiedEventIds.first);
@@ -381,10 +442,18 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     if (!await _isDesktopInBackground()) return;
     if (_isDesktopEventNotified(event)) return;
     _trackDesktopNotifiedEvent(event);
+    if (PlatformInfos.isLinux) {
+      Logs().i(
+        '[LinuxNotify] background notify room=${event.room.id} event=${event.eventId} type=${event.type}',
+      );
+    }
     showLocalNotification(event);
   }
 
   Future<bool> _isDesktopInBackground() async {
+    if (WindowService.isHiddenToTray) {
+      return true;
+    }
     try {
       final isVisible = await windowManager.isVisible();
       final isFocused = await windowManager.isFocused();
@@ -496,12 +565,35 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           } else {
             Logs().w('[Matrix] Push registration failed');
           }
+          _updatePushState();
         }
       } else {
         Logs().w('[Matrix] Aliyun Push initialization failed');
       }
     } catch (e, s) {
       Logs().e('[Matrix] Aliyun Push init error', e, s);
+    }
+  }
+
+  Future<void> ensureAliyunPushRegistered(Client c) async {
+    if (!PlatformInfos.isMobile) return;
+    final userID = c.userID;
+    if (userID == null || userID.isEmpty) return;
+
+    final inFlightTask = _pushRegistrationTasks[userID];
+    if (inFlightTask != null) {
+      await inFlightTask;
+      return;
+    }
+
+    final task = _registerAliyunPushAfterLogin(c);
+    _pushRegistrationTasks[userID] = task;
+    try {
+      await task;
+    } finally {
+      if (identical(_pushRegistrationTasks[userID], task)) {
+        _pushRegistrationTasks.remove(userID);
+      }
     }
   }
 
@@ -565,6 +657,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           print('[PUSH_AUDIT] Matrix register after login failed');
         }
       }
+      _updatePushState();
     } catch (e, s) {
       Logs().e('[Matrix] Register Aliyun Push after login error', e, s);
       if (kReleaseMode) {
@@ -587,11 +680,16 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         Logs().v('Set background sync to', foreground);
       }
     }
+    _updatePushState();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (PlatformInfos.isMobile) {
+      PsygoApp.router.routeInformationProvider.removeListener(_onRouteChanged);
+      PushStateReporter.instance.stop();
+    }
 
     // 修复：使用 forEach 而不是 map，因为 map 是惰性的不会立即执行
     for (final sub in onRoomKeyRequestSub.values) {
@@ -614,7 +712,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onBlurSub?.cancel();
     voiceMessageEventId.dispose();
 
-    linuxNotifications?.close();
+    _linuxNotifications?.close();
+    _linuxNotifications = null;
 
     super.dispose();
   }

@@ -1,11 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/hire_result.dart';
+import 'package:psygo/repositories/agent_template_repository.dart';
+import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/widgets/custom_hire_dialog.dart';
+import 'package:psygo/widgets/hire_success_dialog.dart';
 
 import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 import 'recruit_tab.dart';
 import 'training_tab.dart';
+
+// Keep legacy 3-tab implementation for rollback; hide it from users for now.
+const bool _useSimplifiedTeamPage = true;
 
 /// Team main page
 /// Contains three tabs: Employees, Recruit, Training
@@ -30,6 +41,9 @@ class TeamPageController extends State<TeamPage>
     _tabController = TabController(length: 3, vsync: this);
     // 监听 tab 变化以更新图标状态
     _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyEmployeesTabVisibility();
+    });
   }
 
   @override
@@ -42,13 +56,22 @@ class TeamPageController extends State<TeamPage>
   void _onTabChanged() {
     // 仅用于刷新图标状态，不需要手动同步 PageView
     if (!_tabController.indexIsChanging) {
+      _notifyEmployeesTabVisibility();
       setState(() {});
     }
+  }
+
+  void _notifyEmployeesTabVisibility() {
+    _employeesTabKey.currentState?.onTabVisibilityChanged(_tabController.index == 0);
   }
 
   /// Switch to Employees tab and refresh the list
   /// Called after successful employee hire
   void switchToEmployeesAndRefresh() {
+    if (_useSimplifiedTeamPage) {
+      refreshEmployeeList();
+      return;
+    }
     _tabController.animateTo(0);
     // Trigger refresh on employees tab
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -59,6 +82,10 @@ class TeamPageController extends State<TeamPage>
   /// Switch to Recruit tab
   /// Called from empty state in Employees tab
   void switchToRecruitTab() {
+    if (_useSimplifiedTeamPage) {
+      unawaited(openRecruitMenu(context));
+      return;
+    }
     _tabController.animateTo(1);
   }
 
@@ -66,6 +93,80 @@ class TeamPageController extends State<TeamPage>
   /// Called after successful hire (background refresh)
   void refreshEmployeeList() {
     _employeesTabKey.currentState?.refreshEmployeeList();
+  }
+
+  /// Open recruit flow as a standalone page in simplified mode
+  void openRecruitPage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (recruitContext) => RecruitTab(
+          onEmployeeHired: () {
+            if (Navigator.of(recruitContext).canPop()) {
+              Navigator.of(recruitContext).pop();
+            }
+            refreshEmployeeList();
+          },
+          onRefreshEmployees: refreshEmployeeList,
+        ),
+      ),
+    );
+  }
+
+  Future<void> openRecruitMenu(BuildContext context) async {
+    final repository = AgentTemplateRepository();
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    try {
+      final result = isDesktop
+          ? await showDialog<HireResult>(
+              context: context,
+              builder: (_) => Dialog(
+                backgroundColor: Colors.transparent,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: CustomHireDialog(
+                    repository: repository,
+                    isDialog: true,
+                  ),
+                ),
+              ),
+            )
+          : await showModalBottomSheet<HireResult>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              isDismissible: true,
+              enableDrag: true,
+              builder: (_) => CustomHireDialog(
+                repository: repository,
+              ),
+            );
+
+      if (!mounted || result == null) return;
+
+      refreshEmployeeList();
+      unawaited(AgentService.instance.refresh());
+
+      final displayName = result.displayName.trim();
+      final employeeName = displayName.isNotEmpty ? displayName : 'Employee';
+
+      showHireSuccessDialog(
+        context: context,
+        employeeName: employeeName,
+        onViewEmployee: refreshEmployeeList,
+        onContinueHiring: () {
+          if (!mounted) return;
+          unawaited(openRecruitMenu(context));
+        },
+      );
+
+      await result.responseFuture;
+      if (!mounted) return;
+      refreshEmployeeList();
+      unawaited(AgentService.instance.refresh());
+    } finally {
+      repository.dispose();
+    }
   }
 
   @override
@@ -82,6 +183,157 @@ class TeamPageView extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
 
+    if (_useSimplifiedTeamPage) {
+      return Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          automaticallyImplyLeading: false,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.08),
+                  theme.colorScheme.surface,
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.tertiary,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.groups_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                l10n.teamPageTitle,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.6,
+                ),
+              ),
+            ],
+          ),
+          centerTitle: false,
+          elevation: 0,
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 22,
+                ),
+                tooltip: l10n.walletTitle,
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const WalletPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        body: EmployeesTab(
+          key: controller._employeesTabKey,
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primary,
+                theme.colorScheme.tertiary,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => unawaited(controller.openRecruitMenu(context)),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.customHire,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Legacy 3-tab layout (hidden in simplified mode above)
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(

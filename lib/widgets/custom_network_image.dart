@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 /// 自定义网络图片组件
@@ -30,13 +31,43 @@ class CustomNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.network(
-      url,
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final memCacheWidth = width == null ? null : (width! * devicePixelRatio).round();
+    final memCacheHeight = height == null ? null : (height! * devicePixelRatio).round();
+
+    return CachedNetworkImage(
+      imageUrl: url,
       fit: fit,
       width: width,
       height: height,
-      loadingBuilder: loadingBuilder,
-      errorBuilder: errorBuilder,
+      memCacheWidth: memCacheWidth,
+      memCacheHeight: memCacheHeight,
+      placeholder: loadingBuilder == null
+          ? null
+          : (context, _) => loadingBuilder!(
+                context,
+                const SizedBox.shrink(),
+                const ImageChunkEvent(
+                  cumulativeBytesLoaded: 0,
+                  expectedTotalBytes: 1,
+                ),
+              ),
+      imageBuilder: (context, imageProvider) {
+        final image = Image(
+          image: imageProvider,
+          fit: fit,
+          width: width,
+          height: height,
+        );
+        if (loadingBuilder == null) {
+          return image;
+        }
+        return loadingBuilder!(context, image, null);
+      },
+      errorWidget: errorBuilder == null
+          ? null
+          : (context, _, error) =>
+              errorBuilder!(context, error, StackTrace.current),
     );
   }
 }

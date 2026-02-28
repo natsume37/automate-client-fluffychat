@@ -3537,10 +3537,12 @@
     "@employeeSleeping": {},
     "employeeWorkingHint": "正在处理任务",
     "@employeeWorkingHint": {},
-    "employeeSlackingHint": "摸鱼中，可随时安排工作",
+    "employeeSlackingHint": "可随时安排工作",
     "@employeeSlackingHint": {},
-    "employeeSleepingHint": "休息中，唤醒员工需要一定时间",
+    "employeeSleepingHint": "唤醒员工需要一定时间",
     "@employeeSleepingHint": {},
+    "agentWebEntryUnavailable": "该员工当前未开放入口",
+    "@agentWebEntryUnavailable": {},
     "employeeOnboarding": "入职中...",
     "@employeeOnboarding": {},
     "employeeReady": "就绪",
@@ -3550,9 +3552,9 @@
 
     "startChat": "开始聊天",
     "@startChat": {},
-    "deleteEmployee": "优化员工",
+    "deleteEmployee": "辞退员工",
     "@deleteEmployee": {},
-    "deleteEmployeeConfirm": "确定要“优化” {name} 吗？此操作无法撤销。",
+    "deleteEmployeeConfirm": "确定要辞退 {name} 吗？此操作无法撤销。",
     "@deleteEmployeeConfirm": {
         "type": "String",
         "placeholders": {
@@ -3561,9 +3563,9 @@
             }
         }
     },
-    "employeeDeleted": "员工已优化",
+    "employeeDeleted": "员工已辞退",
     "@employeeDeleted": {},
-    "errorDeletingEmployee": "优化员工失败",
+    "errorDeletingEmployee": "辞退员工失败",
     "@errorDeletingEmployee": {},
     "errorStartingChat": "开始聊天失败",
     "@errorStartingChat": {},

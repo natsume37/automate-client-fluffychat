@@ -72,16 +72,30 @@ extension LocalNotificationsExtension on MatrixState {
 
   void showLocalNotification(Event event) async {
     final roomId = event.room.id;
+    if (Platform.isLinux) {
+      Logs().i(
+        '[LinuxNotify] showLocalNotification room=$roomId event=${event.eventId} type=${event.type} activeRoom=$activeRoomId',
+      );
+    }
     // 如果用户在当前房间，不显示通知
     if (activeRoomId == roomId) {
-      if (kIsWeb && webHasFocus) return;
+      if (kIsWeb && webHasFocus) {
+        if (Platform.isLinux) {
+          Logs().i('[LinuxNotify] skip: active room and web focused');
+        }
+        return;
+      }
       if (PlatformInfos.isDesktop &&
-          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+          !WindowService.isHiddenToTray) {
         try {
           final isVisible = await windowManager.isVisible();
           final isFocused = await windowManager.isFocused();
           final isMinimized = await windowManager.isMinimized();
           if (isVisible && isFocused && !isMinimized) {
+            if (Platform.isLinux) {
+              Logs().i('[LinuxNotify] skip: active room and window focused');
+            }
             return;
           }
         } catch (e, s) {
@@ -91,6 +105,9 @@ extension LocalNotificationsExtension on MatrixState {
       // 移动端：App 在前台且在当前房间时不显示通知
       if ((Platform.isAndroid || Platform.isIOS) &&
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        if (Platform.isLinux) {
+          Logs().i('[LinuxNotify] skip: active room foreground (mobile)');
+        }
         return;
       }
     }
@@ -147,7 +164,7 @@ extension LocalNotificationsExtension on MatrixState {
       );
     } else if (Platform.isLinux) {
       final avatarUrl = event.room.avatar;
-      final hints = [NotificationHint.soundName('message-new-instant')];
+      final fullHints = [NotificationHint.soundName('message-new-instant')];
 
       if (avatarUrl != null) {
         try {
@@ -166,7 +183,7 @@ extension LocalNotificationsExtension on MatrixState {
           final image = decodeImage(data);
           if (image != null) {
             final realData = image.getBytes(order: ChannelOrder.rgba);
-            hints.add(
+            fullHints.add(
               NotificationHint.imageData(
                 image.width,
                 image.height,
@@ -180,41 +197,91 @@ extension LocalNotificationsExtension on MatrixState {
           Logs().w('Unable to load avatar for Linux notification', e, s);
         }
       }
-      final notification = await linuxNotifications!.notify(
-        title,
-        body: body,
-        replacesId: linuxNotificationIds[roomId] ?? 0,
-        appName: AppSettings.applicationName.value,
-        appIcon: 'psygo',
-        actions: [
-          NotificationAction(
-            'default',
-            L10n.of(context).openChat,
-          ),
-          NotificationAction(
-            DesktopNotificationActions.seen.name,
-            L10n.of(context).markAsRead,
-          ),
-        ],
-        hints: hints,
-      );
-      notification.action.then((actionStr) async {
-        if (actionStr == null || actionStr.isEmpty) {
-          return;
-        }
-        if (actionStr == DesktopNotificationActions.seen.name) {
-          event.room.setReadMarker(
-            event.eventId,
-            mRead: event.eventId,
-            public: AppSettings.sendPublicReadReceipts.value,
+      final fullActions = [
+        NotificationAction(
+          'default',
+          L10n.of(context).openChat,
+        ),
+        NotificationAction(
+          DesktopNotificationActions.seen.name,
+          L10n.of(context).markAsRead,
+        ),
+      ];
+
+      Future<dynamic> sendLinuxNotification({
+        required List<NotificationHint> notifyHints,
+        required List<NotificationAction> notifyActions,
+        required int replacesId,
+      }) async {
+        final client = linuxNotifications;
+        if (client == null) return null;
+        return client.notify(
+          title,
+          body: body,
+          replacesId: replacesId,
+          appName: AppSettings.applicationName.value,
+          appIcon: 'psygo',
+          actions: notifyActions,
+          hints: notifyHints,
+        );
+      }
+
+      dynamic notification;
+      var notificationHasActions = true;
+      try {
+        notification = await sendLinuxNotification(
+          notifyHints: fullHints,
+          notifyActions: fullActions,
+          replacesId: linuxNotificationIds[roomId] ?? 0,
+        );
+      } catch (e, s) {
+        Logs().w('Linux notification failed, retrying with new client', e, s);
+        resetLinuxNotifications();
+        try {
+          notification = await sendLinuxNotification(
+            notifyHints: fullHints,
+            notifyActions: fullActions,
+            replacesId: linuxNotificationIds[roomId] ?? 0,
           );
-        } else {
-          // 点击通知本身(default)或其他情况都跳转到聊天室
-          await WindowService.showWindow();
-          setActiveClient(event.room.client);
-          PsygoApp.router.go('/rooms/${event.room.id}');
+        } catch (e, s) {
+          Logs().w(
+            'Linux notification retry failed, falling back to minimal',
+            e,
+            s,
+          );
+          notificationHasActions = false;
+          try {
+            notification = await sendLinuxNotification(
+              notifyHints: const [],
+              notifyActions: const [],
+              replacesId: 0,
+            );
+          } catch (e, s) {
+            Logs().w('Linux notification minimal fallback failed', e, s);
+            return;
+          }
         }
-      });
+      }
+      if (notification == null) return;
+      if (notificationHasActions) {
+        notification.action.then((actionStr) async {
+          if (actionStr == null || actionStr.isEmpty) {
+            return;
+          }
+          if (actionStr == DesktopNotificationActions.seen.name) {
+            event.room.setReadMarker(
+              event.eventId,
+              mRead: event.eventId,
+              public: AppSettings.sendPublicReadReceipts.value,
+            );
+          } else {
+            // 点击通知本身(default)或其他情况都跳转到聊天室
+            await WindowService.showWindow();
+            setActiveClient(event.room.client);
+            PsygoApp.router.go('/rooms/${event.room.id}');
+          }
+        });
+      }
       linuxNotificationIds[roomId] = notification.id;
     } else if (Platform.isWindows || Platform.isMacOS) {
       final plugin = await _getNotificationsPlugin();

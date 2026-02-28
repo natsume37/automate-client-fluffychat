@@ -22,7 +22,11 @@ class AgentRepository {
   /// [limit] 每页条数（默认 20）
   ///
   /// 返回 [AgentPage] 包含 agents 列表和分页信息
-  Future<AgentPage> getUserAgents({int? cursor, int limit = 20}) async {
+  Future<AgentPage> getUserAgents({
+    int? cursor,
+    int limit = 20,
+    bool forceRefresh = false,
+  }) async {
     final queryParams = <String, String>{
       'limit': limit.toString(),
     };
@@ -34,6 +38,7 @@ class AgentRepository {
       '/api/agents/my-agents',
       queryParameters: queryParams,
       fromJsonT: (data) => data as Map<String, dynamic>,
+      noCache: forceRefresh,
     );
 
     if (response.data == null) {

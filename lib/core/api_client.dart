@@ -69,6 +69,7 @@ class PsygoApiClient {
     Map<String, String>? queryParameters,
     T Function(dynamic)? fromJsonT,
     bool requiresAuth = true,
+    bool noCache = false,
     Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path).replace(
@@ -76,7 +77,10 @@ class PsygoApiClient {
     );
 
     Future<http.Response> doRequest() async {
-      final merged = await _buildHeaders(requiresAuth);
+      final merged = await _buildHeaders(
+        requiresAuth,
+        noCache: noCache,
+      );
       if (headers != null) {
         merged.addAll(headers);
       }
@@ -182,11 +186,20 @@ class PsygoApiClient {
   }
 
   /// 构建请求头
-  Future<Map<String, String>> _buildHeaders(bool requiresAuth) async {
+  Future<Map<String, String>> _buildHeaders(
+    bool requiresAuth, {
+    bool noCache = false,
+  }) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept-Language': PlatformDispatcher.instance.locale.languageCode,
     };
+
+    if (noCache) {
+      headers['Cache-Control'] = 'no-cache, no-store, max-age=0';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
+    }
 
     if (requiresAuth) {
       // 使用 TokenManager 获取 token（自动处理刷新）

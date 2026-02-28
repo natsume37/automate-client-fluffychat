@@ -3358,5 +3358,19 @@
                 "type": "int"
             }
         }
-    }
+    },
+    "employeeWorking": "工作中",
+    "@employeeWorking": {},
+    "employeeSlacking": "摸魚中",
+    "@employeeSlacking": {},
+    "employeeSleeping": "休息中",
+    "@employeeSleeping": {},
+    "employeeWorkingHint": "正在處理任務",
+    "@employeeWorkingHint": {},
+    "employeeSlackingHint": "可隨時安排工作",
+    "@employeeSlackingHint": {},
+    "employeeSleepingHint": "喚醒員工需要一些時間",
+    "@employeeSleepingHint": {},
+    "agentWebEntryUnavailable": "該員工當前未開放入口",
+    "@agentWebEntryUnavailable": {}
 }
