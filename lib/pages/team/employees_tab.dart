@@ -357,6 +357,7 @@ class EmployeesTabState extends State<EmployeesTab>
         isScrollControlled: true,
         isDismissible: true,
         enableDrag: true,
+        showDragHandle: false,
         backgroundColor: Colors.transparent,
         builder: (context) => EmployeeDetailSheet(
           employee: employee,

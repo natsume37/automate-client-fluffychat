@@ -155,6 +155,7 @@ class RecruitTabState extends State<RecruitTab>
             backgroundColor: Colors.transparent,
             isDismissible: true,
             enableDrag: true,
+            showDragHandle: false,
             builder: (context) => CustomHireDialog(
               repository: _repository,
             ),

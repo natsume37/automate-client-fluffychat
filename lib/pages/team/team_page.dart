@@ -152,6 +152,7 @@ class TeamPageController extends State<TeamPage>
               backgroundColor: Colors.transparent,
               isDismissible: true,
               enableDrag: true,
+              showDragHandle: false,
               builder: (_) => CustomHireDialog(
                 repository: repository,
               ),
