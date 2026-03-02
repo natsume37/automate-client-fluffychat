@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 
 import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
@@ -248,8 +249,7 @@ abstract class ClientManager {
     }
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    final iconUri =
-        Platform.isWindows ? WindowsImage.getAssetUri('assets/logo.png') : null;
+    final iconUri = Platform.isWindows ? _windowsLogoUri() : null;
 
     await flutterLocalNotificationsPlugin.initialize(
       InitializationSettings(
@@ -291,5 +291,16 @@ abstract class ClientManager {
             : null,
       ),
     );
+  }
+
+  static Uri _windowsLogoUri() {
+    final logoPath = path.join(
+      path.dirname(Platform.resolvedExecutable),
+      'data',
+      'flutter_assets',
+      'assets',
+      'logo.png',
+    );
+    return Uri.file(logoPath, windows: true);
   }
 }

@@ -9,6 +9,7 @@ import 'package:image/image.dart';
 import 'package:matrix/matrix.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:window_manager/window_manager.dart';
+import 'package:path/path.dart' as path;
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -29,6 +30,17 @@ extension LocalNotificationsExtension on MatrixState {
   static FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
   static bool _isInitialized = false;
 
+  Uri _windowsLogoUri() {
+    final logoPath = path.join(
+      path.dirname(Platform.resolvedExecutable),
+      'data',
+      'flutter_assets',
+      'assets',
+      'logo.png',
+    );
+    return Uri.file(logoPath, windows: true);
+  }
+
   Future<FlutterLocalNotificationsPlugin> _getNotificationsPlugin() async {
     if (_flutterLocalNotificationsPlugin != null && _isInitialized) {
       return _flutterLocalNotificationsPlugin!;
@@ -38,7 +50,7 @@ extension LocalNotificationsExtension on MatrixState {
 
     InitializationSettings? initSettings;
     if (Platform.isWindows) {
-      final iconUri = WindowsImage.getAssetUri('assets/logo.png');
+      final iconUri = _windowsLogoUri();
       initSettings = InitializationSettings(
         windows: WindowsInitializationSettings(
           appName: 'Psygo',
@@ -288,11 +300,12 @@ extension LocalNotificationsExtension on MatrixState {
 
       NotificationDetails? notificationDetails;
       if (Platform.isWindows) {
+        final iconUri = _windowsLogoUri();
         notificationDetails = NotificationDetails(
           windows: WindowsNotificationDetails(
             images: [
               WindowsImage(
-                WindowsImage.getAssetUri('assets/logo.png'),
+                iconUri,
                 altText: 'Psygo',
                 placement: WindowsImagePlacement.appLogoOverride,
               ),
