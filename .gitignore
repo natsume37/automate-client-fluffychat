@@ -1,6 +1,7 @@
 # Environment variables (contains sensitive data)
 .env
-env.json
+env*.json
+!env.json.example
 
 
 # auto-generated icon sets
@@ -116,13 +117,9 @@ web/pkg/vodozemac_bindings_dart.js
 # Kotlin build cache
 android/.kotlin/
 android/build/
-env.local.json
-env.test.json
-env.dev.json
 
 # Build scripts
 ios_build.sh
 android_build.sh
 build-linux.sh
 build-deb.sh
-env.refactor.json
