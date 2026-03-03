@@ -16,6 +16,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/app_lock.dart';
@@ -165,6 +166,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _isLoggingOut = false; // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false; // 延迟触发一键登录（等待 app 回到前台）
   bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
+  bool _hasResolvedPostLoginDestination = false;
+  bool _isResolvingPostLoginDestination = false;
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
@@ -247,6 +250,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _startAgreementCheckService();
           // 启动同步状态监听，检测持续连接失败
           _startSyncStatusMonitoring(loggedInClient);
+          unawaited(_ensurePostLoginDestination());
         } else {
           // Matrix 还没登录完成，稍后再检查
           debugPrint(
@@ -512,6 +516,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         // 启动协议检查后台服务
         _startAgreementCheckService();
+        await _ensurePostLoginDestination();
         return;
       }
 
@@ -543,6 +548,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           if (PlatformInfos.isMobile) {
             unawaited(matrix.ensureAliyunPushRegistered(matrix.client));
           }
+          await _ensurePostLoginDestination();
           return;
         }
 
@@ -717,6 +723,30 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     return l10n.authLoginFailedRetryLater;
   }
 
+  Future<void> _ensurePostLoginDestination() async {
+    if (_hasResolvedPostLoginDestination || _isResolvingPostLoginDestination) {
+      return;
+    }
+    _isResolvingPostLoginDestination = true;
+    try {
+      final destination = await resolvePostLoginDestination();
+      if (!mounted) return;
+      final router = PsygoApp.router;
+      final currentPath = router.routeInformationProvider.value.uri.path;
+      debugPrint(
+        '[AuthGate] Post-login destination resolved: $destination, current: $currentPath',
+      );
+      if (currentPath != destination) {
+        router.go(destination);
+      }
+      _hasResolvedPostLoginDestination = true;
+    } catch (e) {
+      debugPrint('[AuthGate] Failed to resolve post-login destination: $e');
+    } finally {
+      _isResolvingPostLoginDestination = false;
+    }
+  }
+
   Future<void> _loginMatrixAndProceed() async {
     final auth = context.read<PsygoAuthState>();
     final matrixAccessToken = auth.matrixAccessToken;
@@ -816,15 +846,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           unawaited(matrix.ensureAliyunPushRegistered(client));
         }
 
-        // Navigate to main page after successful login
+        // Navigate to post-login destination after successful login.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            final router = PsygoApp.router;
-            if (router.routerDelegate.currentConfiguration.fullPath !=
-                '/rooms') {
-              router.go('/rooms');
-            }
-          }
+          unawaited(_ensurePostLoginDestination());
         });
 
         if (PlatformInfos.isMobile) {
@@ -864,14 +888,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         unawaited(matrix.ensureAliyunPushRegistered(client));
       }
 
-      // Navigate to main page if not already there
+      // Navigate to post-login destination if not already there.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          final router = PsygoApp.router;
-          if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
-            router.go('/rooms');
-          }
-        }
+        unawaited(_ensurePostLoginDestination());
       });
 
       if (PlatformInfos.isMobile) {
@@ -947,6 +966,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // Web and Desktop: redirect to /login-signup for manual login options
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -1154,6 +1175,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 重置 AuthGate 状态
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() {
       _state = _AuthState.checking;
       _hasTriedAuth = false; // 允许一键登录重新触发
@@ -1243,6 +1266,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 重置 AuthGate 状态
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() {
       // PC端/Web端：设置为 needsLogin，显示登录页面
       // 移动端：设置为 checking，等待一键登录

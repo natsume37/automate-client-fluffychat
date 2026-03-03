@@ -140,6 +140,7 @@ abstract class AppRoutes {
       // twice with the same GlobalKey, blowing up the rendering.
       pageBuilder: (context, state, child) {
         final path = state.fullPath ?? '';
+        final locationPath = state.uri.path;
         // 这些路径不使用 DesktopLayout，使用原始 child
         final excludedPaths = [
           '/rooms/settings',
@@ -158,6 +159,9 @@ abstract class AppRoutes {
           shouldUseDesktopLayout
               ? DesktopLayout(
                   activeChat: state.pathParameters['roomid'],
+                  initialPage: locationPath.startsWith('/rooms/team')
+                      ? DesktopPageIndex.employees
+                      : DesktopPageIndex.messages,
                 )
               : child,
         );

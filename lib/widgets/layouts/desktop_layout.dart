@@ -122,6 +122,12 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   @override
   void didUpdateWidget(DesktopLayout oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.activeChat == null &&
+        widget.initialPage != oldWidget.initialPage &&
+        _currentPage != widget.initialPage) {
+      setState(() => _currentPage = widget.initialPage);
+      return;
+    }
     // 当 activeChat 变化且当前不在消息页面时，自动切换到消息页面
     if (widget.activeChat != null &&
         widget.activeChat != oldWidget.activeChat &&

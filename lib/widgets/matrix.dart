@@ -22,6 +22,7 @@ import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/init_with_restore.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/push_state_reporter.dart';
 import 'package:psygo/utils/uia_request_manager.dart';
 import 'package:psygo/utils/voip_plugin.dart';
@@ -169,7 +170,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
             );
             _registerSubs(_loginClientCandidate!.clientName);
             _loginClientCandidate = null;
-            PsygoApp.router.go('/rooms');
+            unawaited(() async {
+              final destination = await resolvePostLoginDestination();
+              PsygoApp.router.go(destination);
+            }());
           });
     debugPrint('[Matrix] Before adding candidate: clients.isEmpty=${widget.clients.isEmpty}');
     if (widget.clients.isEmpty) {
@@ -362,10 +366,15 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       } else {
         // Mobile: Don't redirect to /login-signup, let AuthGate handle
         // Web/Desktop: Redirect to /login-signup for manual login
-        final destination = state == LoginState.loggedIn
-            ? '/rooms'
-            : (PlatformInfos.isMobile ? '/' : '/login-signup');
-        PsygoApp.router.go(destination);
+        if (state == LoginState.loggedIn) {
+          unawaited(() async {
+            final destination = await resolvePostLoginDestination();
+            PsygoApp.router.go(destination);
+          }());
+        } else {
+          final destination = PlatformInfos.isMobile ? '/' : '/login-signup';
+          PsygoApp.router.go(destination);
+        }
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
