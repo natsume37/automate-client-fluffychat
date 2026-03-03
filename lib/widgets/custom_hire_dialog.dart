@@ -7,7 +7,7 @@ import '../repositories/agent_template_repository.dart';
 import '../utils/localized_exception_extension.dart';
 import 'dicebear_avatar_picker.dart';
 
-/// 定制招聘（单步创建）
+/// 招聘（单步创建）
 class CustomHireDialog extends StatefulWidget {
   final AgentTemplateRepository repository;
   final bool isDialog;
