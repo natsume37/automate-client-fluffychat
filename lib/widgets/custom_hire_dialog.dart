@@ -153,64 +153,68 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     final l10n = L10n.of(context);
     return PopScope(
       canPop: !_isSubmitting,
-      child: widget.isDialog
-          ? _buildDialogContent(theme, l10n)
-          : GestureDetector(
-              onTap: () {}, // 阻止点击传递到背景
-              child: DraggableScrollableSheet(
-                initialChildSize: 0.9,
-                minChildSize: 0.3,
-                maxChildSize: 0.95,
-                snap: true,
-                snapSizes: const [0.9],
-                builder: (context, scrollController) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(28)),
-                    ),
-                    child: Column(
-                      children: [
-                        // 顶部拖拽指示器 - 可拖拽区域
-                        Container(
-                          width: double.infinity,
-                          color: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(2),
+      child: AbsorbPointer(
+        absorbing: _isSubmitting,
+        child: widget.isDialog
+            ? _buildDialogContent(theme, l10n)
+            : GestureDetector(
+                onTap: () {}, // 阻止点击传递到背景
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.9,
+                  minChildSize: 0.3,
+                  maxChildSize: 0.95,
+                  snap: true,
+                  snapSizes: const [0.9],
+                  builder: (context, scrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(28)),
+                      ),
+                      child: Column(
+                        children: [
+                          // 顶部拖拽指示器 - 可拖拽区域
+                          Container(
+                            width: double.infinity,
+                            color: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        // 标题栏
-                        _buildHeader(theme, l10n),
-                        // 内容区域
-                        Expanded(
-                          child: ListView(
-                            controller: scrollController,
-                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                            children: [
-                              _buildContent(theme, l10n),
-                            ],
+                          // 标题栏
+                          _buildHeader(theme, l10n),
+                          // 内容区域
+                          Expanded(
+                            child: ListView(
+                              controller: scrollController,
+                              padding:
+                                  const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                              children: [
+                                _buildContent(theme, l10n),
+                              ],
+                            ),
                           ),
-                        ),
-                        // 错误提示
-                        if (_error != null) _buildErrorBanner(theme),
-                        // 底部按钮
-                        _buildActions(theme, l10n),
-                      ],
-                    ),
-                  );
-                },
+                          // 错误提示
+                          if (_error != null) _buildErrorBanner(theme),
+                          // 底部按钮
+                          _buildActions(theme, l10n),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
+      ),
     );
   }
 
@@ -521,9 +525,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           // 返回/取消按钮
           Expanded(
             child: OutlinedButton(
-              onPressed: _isSubmitting
-                  ? null
-                  : () => Navigator.pop(context),
+              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

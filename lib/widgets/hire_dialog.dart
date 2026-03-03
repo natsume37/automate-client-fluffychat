@@ -36,7 +36,8 @@ class _HireDialogState extends State<HireDialog> {
   static const int _maxNameLength = 20;
 
   // 验证状态
-  bool get _isNameTooLong => _nameController.text.trim().length > _maxNameLength;
+  bool get _isNameTooLong =>
+      _nameController.text.trim().length > _maxNameLength;
 
   @override
   void initState() {
@@ -93,10 +94,12 @@ class _HireDialogState extends State<HireDialog> {
         avatarUrl: widget.template.avatarUrl,
       );
       if (!mounted) return;
-      Navigator.of(context).pop(HireResult(
-        responseFuture: Future.value(response),
-        displayName: name,
-      ));
+      Navigator.of(context).pop(
+        HireResult(
+          responseFuture: Future.value(response),
+          displayName: name,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -118,197 +121,208 @@ class _HireDialogState extends State<HireDialog> {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      elevation: 0,
-      backgroundColor: theme.colorScheme.surface,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 380),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.shadow.withAlpha(20),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+    return PopScope(
+      canPop: !_isLoading,
+      child: AbsorbPointer(
+        absorbing: _isLoading,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          elevation: 0,
+          backgroundColor: theme.colorScheme.surface,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 380),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(20),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 标题
-              Text(
-                l10n.hireEmployee,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-
-              // 模板信息预览
-              _buildTemplatePreview(theme),
-              const SizedBox(height: 24),
-
-              // 员工名称输入
-              TextField(
-                controller: _nameController,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  labelText: l10n.employeeName,
-                  hintText: l10n.enterEmployeeName,
-                  prefixIcon: Icon(
-                    Icons.badge_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: _isNameTooLong
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.outlineVariant.withAlpha(80),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 标题
+                  Text(
+                    l10n.hireEmployee,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: _isNameTooLong
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerLow,
-                  counterText: '${_nameController.text.length}/$_maxNameLength',
-                  counterStyle: TextStyle(
-                    color: _isNameTooLong
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                  errorText: _isNameTooLong ? l10n.employeeNameTooLong : null,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                textInputAction: TextInputAction.done,
-                enabled: !_isLoading,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _onConfirm(),
-              ),
-              const SizedBox(height: 16),
+                  const SizedBox(height: 28),
 
-              // 错误提示
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withAlpha(40),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorScheme.error.withAlpha(40),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withAlpha(30),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.error_outline_rounded,
-                          size: 16,
-                          color: theme.colorScheme.error,
+                  // 模板信息预览
+                  _buildTemplatePreview(theme),
+                  const SizedBox(height: 24),
+
+                  // 员工名称输入
+                  TextField(
+                    controller: _nameController,
+                    focusNode: _focusNode,
+                    decoration: InputDecoration(
+                      labelText: l10n.employeeName,
+                      hintText: l10n.enterEmployeeName,
+                      prefixIcon: Icon(
+                        Icons.badge_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: _isNameTooLong
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.outlineVariant.withAlpha(80),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.error,
-                            fontWeight: FontWeight.w500,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: _isNameTooLong
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerLow,
+                      counterText:
+                          '${_nameController.text.length}/$_maxNameLength',
+                      counterStyle: TextStyle(
+                        color: _isNameTooLong
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                      errorText:
+                          _isNameTooLong ? l10n.employeeNameTooLong : null,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    enabled: !_isLoading,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _onConfirm(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 错误提示
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withAlpha(40),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withAlpha(40),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.error.withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.error_outline_rounded,
+                              size: 16,
+                              color: theme.colorScheme.error,
+                            ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+
+                  // 操作按钮
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed:
+                              _isLoading ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            side: BorderSide(
+                              color: theme.colorScheme.outline.withAlpha(100),
+                            ),
+                          ),
+                          child: Text(
+                            l10n.cancel,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _isLoading ? null : _onConfirm,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.person_add_rounded,
+                                        size: 18),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      l10n.confirmHire,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-              const SizedBox(height: 28),
-
-              // 操作按钮
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isLoading ? null : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        side: BorderSide(
-                          color: theme.colorScheme.outline.withAlpha(100),
-                        ),
-                      ),
-                      child: Text(
-                        l10n.cancel,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : _onConfirm,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: theme.colorScheme.onPrimary,
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.person_add_rounded, size: 18),
-                                const SizedBox(width: 6),
-                                Text(
-                                  l10n.confirmHire,
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
