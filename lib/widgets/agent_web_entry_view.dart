@@ -3,13 +3,15 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/windows_inline_webview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Inline WebView used by agent "web entry" (reverse-tunnel) feature.
 ///
 /// Notes:
-/// - `webview_flutter` supports Android/iOS/macOS only.
+/// - `webview_flutter` supports Android/iOS/macOS.
+/// - `webview_windows` is used on Windows.
 /// - On unsupported platforms, callers should open the URL in external browser instead.
 class AgentWebEntryView extends StatefulWidget {
   final String url;
@@ -21,7 +23,10 @@ class AgentWebEntryView extends StatefulWidget {
 
   static bool get supportsWebView {
     if (kIsWeb) return false;
-    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows;
   }
 
   @override
@@ -38,7 +43,9 @@ class _AgentWebEntryViewState extends State<AgentWebEntryView> {
   void initState() {
     super.initState();
     _allowedOrigin = Uri.parse(widget.url).origin;
-    _initWebView();
+    if (!kIsWeb && !Platform.isWindows) {
+      _initWebView();
+    }
   }
 
   void _initWebView() {
@@ -102,6 +109,14 @@ class _AgentWebEntryViewState extends State<AgentWebEntryView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kIsWeb && Platform.isWindows) {
+      return WindowsInlineWebView(
+        url: widget.url,
+        allowedOrigin: _allowedOrigin,
+        loadFailedMessage: L10n.of(context).webEntryLoadFailed,
+      );
+    }
+
     final theme = Theme.of(context);
 
     return Stack(

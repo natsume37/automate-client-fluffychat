@@ -168,7 +168,10 @@ class ChatController extends State<ChatPageWithRoom>
 
   bool get _supportsInlineWebView {
     if (kIsWeb) return false;
-    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows;
   }
 
   bool _shouldThrottleWebEntryHint() {
