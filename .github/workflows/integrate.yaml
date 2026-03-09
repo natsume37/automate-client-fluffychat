@@ -53,6 +53,19 @@ jobs:
           cache: true
       - uses: ./.github/actions/free_up_space
       - uses: moonrepo/setup-rust@v1
+      - name: Prepare temporary Android signing
+        run: |
+          cd android
+          keytool -genkey -keyalg RSA -alias key -keysize 4096 \
+            -dname "cn=FluffyChat CI, ou=CI, o=FluffyChat, c=US" \
+            -keypass FLUFFYCHAT -storepass FLUFFYCHAT -validity 1 \
+            -keystore key.jks -storetype pkcs12
+          {
+            echo "storePassword=FLUFFYCHAT"
+            echo "keyPassword=FLUFFYCHAT"
+            echo "keyAlias=key"
+            echo "storeFile=../key.jks"
+          } >> key.properties
       - run: flutter pub get
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
