@@ -14,10 +14,12 @@ import 'package:psygo/utils/platform_infos.dart';
 
 class ChatEventList extends StatelessWidget {
   final ChatController controller;
+  final Widget? inlineTopWidget;
 
   const ChatEventList({
     super.key,
     required this.controller,
+    this.inlineTopWidget,
   });
 
   @override
@@ -86,28 +88,42 @@ class ChatEventList extends StatelessWidget {
                 child: CircularProgressIndicator.adaptive(strokeWidth: 2),
               );
             }
+            final footerChildren = <Widget>[
+              SeenByRow(controller),
+              TypingIndicators(controller),
+            ];
+
             if (timeline.canRequestFuture) {
-              return Center(
-                child: IconButton(
-                  onPressed: controller.requestFuture,
-                  icon: const Icon(Icons.refresh_outlined),
+              footerChildren.add(
+                Center(
+                  child: IconButton(
+                    onPressed: controller.requestFuture,
+                    icon: const Icon(Icons.refresh_outlined),
+                  ),
                 ),
               );
             }
+
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                SeenByRow(controller),
-                TypingIndicators(controller),
-              ],
+              children: footerChildren,
             );
           }
 
           // Request history button or progress indicator:
           if (i == events.length + 1) {
+            final historyChildren = <Widget>[
+              if (inlineTopWidget != null) inlineTopWidget!,
+            ];
             if (timeline.isRequestingHistory) {
-              return const Center(
-                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+              historyChildren.add(
+                const Center(
+                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                ),
+              );
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: historyChildren,
               );
             }
             if (timeline.canRequestHistory &&
@@ -116,16 +132,28 @@ class ChatEventList extends StatelessWidget {
                 builder: (context) {
                   WidgetsBinding.instance
                       .addPostFrameCallback(controller.requestHistory);
-                  return Center(
-                    child: IconButton(
-                      onPressed: controller.requestHistory,
-                      icon: const Icon(Icons.refresh_outlined),
+                  historyChildren.add(
+                    Center(
+                      child: IconButton(
+                        onPressed: controller.requestHistory,
+                        icon: const Icon(Icons.refresh_outlined),
+                      ),
                     ),
+                  );
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: historyChildren,
                   );
                 },
               );
             }
-            return const SizedBox.shrink();
+            if (historyChildren.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: historyChildren,
+            );
           }
           i--;
 

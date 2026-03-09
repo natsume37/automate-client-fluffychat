@@ -193,20 +193,21 @@ class ChatView extends StatelessWidget {
   Widget _buildTimelinePane(BuildContext context) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        if ((controller.showEmployeeWorkTemplateBar ||
-                controller.isEmployeeChatGuide) &&
-            controller.activeThreadId == null)
-          EmployeeWorkTemplateBar(
+    final showEmployeeWorkTemplateBar =
+        controller.isEmployeeChat && controller.activeThreadId == null;
+    final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
+        ? EmployeeWorkTemplateBar(
             key: controller.employeeWorkTemplateGuideKey,
             title: l10n.employeeWorkTemplatesTitle,
             subtitle: l10n.employeeWorkTemplatesSubtitle,
             templates: _employeeWorkTemplates(context),
             onTemplateTap: (template) =>
                 _handleEmployeeWorkTemplateTap(context, template),
-          ),
+          )
+        : null;
+
+    return Column(
+      children: [
         Expanded(
           child: Stack(
             children: [
@@ -214,6 +215,7 @@ class ChatView extends StatelessWidget {
                 onTap: controller.clearSingleSelectedEvent,
                 child: ChatEventList(
                   controller: controller,
+                  inlineTopWidget: employeeWorkTemplateBar,
                 ),
               ),
               if (controller.readMarkerEventId.isNotEmpty)

@@ -113,7 +113,7 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
                 )
               else
                 SizedBox(
-                  height: 124,
+                  height: 104,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: templates.length,
@@ -152,7 +152,7 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
 
     return SizedBox(
       width: isWideLayout ? null : 208,
-      height: isWideLayout ? 156 : 124,
+      height: isWideLayout ? 156 : 92,
       child: Material(
         color: Colors.white.withValues(alpha: 0.74),
         borderRadius: BorderRadius.circular(16),
@@ -160,8 +160,8 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: EdgeInsets.all(isWideLayout ? 16 : 14),
-            child: Column(
+            padding: EdgeInsets.all(isWideLayout ? 16 : 12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
@@ -177,25 +177,30 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                SizedBox(height: isWideLayout ? 14 : 12),
-                Text(
-                  template.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
+                SizedBox(width: isWideLayout ? 14 : 12),
                 Expanded(
-                  child: Text(
-                    template.description,
-                    maxLines: isWideLayout ? 3 : 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        template.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        template.description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
