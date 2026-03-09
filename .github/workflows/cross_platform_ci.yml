@@ -1,0 +1,135 @@
+name: Cross Platform CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cross-platform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Check formatting
+        run: dart format lib/ test/ --set-exit-if-changed
+      - name: Static analysis
+        run: flutter analyze
+      - name: Unit tests
+        run: flutter test
+
+  build_linux:
+    name: Build Linux
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libblkid-dev \
+            liblzma-dev \
+            libjsoncpp-dev \
+            cmake-data \
+            libsecret-1-dev \
+            libsecret-1-0 \
+            librhash0 \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Pack Linux artifact
+        run: tar -czf fluffychat-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluffychat-linux-x64
+          path: fluffychat-linux-x64.tar.gz
+
+  build_windows:
+    name: Build Windows
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Load versions
+        shell: bash
+        run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Pack Windows artifact
+        shell: pwsh
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath fluffychat-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluffychat-windows-x64
+          path: fluffychat-windows-x64.zip
+
+  build_android_apk:
+    name: Build Android APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - name: Prepare temporary Android signing
+        run: |
+          cd android
+          keytool -genkey -keyalg RSA -alias key -keysize 4096 \
+            -dname "cn=FluffyChat CI, ou=CI, o=FluffyChat, c=US" \
+            -keypass FLUFFYCHAT -storepass FLUFFYCHAT -validity 1 \
+            -keystore key.jks -storetype pkcs12
+          {
+            echo "storePassword=FLUFFYCHAT"
+            echo "keyPassword=FLUFFYCHAT"
+            echo "keyAlias=key"
+            echo "storeFile=../key.jks"
+          } >> key.properties
+      - run: flutter pub get
+      - run: flutter build apk --release --target-platform android-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluffychat-android-apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/apk/release/app-release.apk
+          if-no-files-found: error
