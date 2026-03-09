@@ -5,6 +5,7 @@ import 'package:psygo/l10n/l10n.dart';
 import '../core/api_client.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
+import '../utils/platform_infos.dart';
 import '../utils/localized_exception_extension.dart';
 import 'dicebear_avatar_picker.dart';
 
@@ -52,6 +53,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   static const double _guideBubbleHeight = 176;
   static const double _guideHighlightPadding = 10;
   static const double _guideScreenPadding = 16;
+  static const double _guideConnectorGap = 36;
   static const List<String> _zhGuideNameSuggestions = [
     '知夏',
     '明远',
@@ -490,9 +492,16 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         }
 
         final highlightRect = targetRect.inflate(_guideHighlightPadding);
+        final bubbleSize = _resolveGuideBubbleSize(
+          availableSize: Size(constraints.maxWidth, constraints.maxHeight),
+          theme: theme,
+          title: currentStep.title,
+          description: currentStep.description,
+        );
         final bubbleLayout = _buildGuideBubbleLayout(
           Size(constraints.maxWidth, constraints.maxHeight),
           highlightRect,
+          bubbleSize,
         );
 
         return Stack(
@@ -546,8 +555,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             Positioned(
               left: bubbleLayout.left,
               top: bubbleLayout.top,
-              width: _guideBubbleWidth,
-              height: _guideBubbleHeight,
+              width: bubbleSize.width,
+              height: bubbleSize.height,
               child: _buildGuideBubble(
                 theme: theme,
                 l10n: l10n,
@@ -628,26 +637,35 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   _RecruitGuideBubbleLayout _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
+    Size bubbleSize,
   ) {
-    final showAbove = highlightRect.center.dy > size.height * 0.55;
+    final bubbleWidth = bubbleSize.width;
+    final bubbleHeight = bubbleSize.height;
+    final spaceAbove =
+        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
+    final spaceBelow =
+        size.height - highlightRect.bottom - _guideScreenPadding - _guideConnectorGap;
+    final showAbove = spaceAbove >= bubbleHeight
+        ? true
+        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
     final maxLeft = max(
       _guideScreenPadding,
-      size.width - _guideBubbleWidth - _guideScreenPadding,
+      size.width - bubbleWidth - _guideScreenPadding,
     );
-    final left = (highlightRect.center.dx - (_guideBubbleWidth / 2))
+    final left = (highlightRect.center.dx - (bubbleWidth / 2))
         .clamp(_guideScreenPadding, maxLeft)
         .toDouble();
     final top = showAbove
         ? max(
             _guideScreenPadding,
-            highlightRect.top - _guideBubbleHeight - 36,
+            highlightRect.top - bubbleHeight - _guideConnectorGap,
           ).toDouble()
         : min(
-            size.height - _guideBubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + 36,
+            size.height - bubbleHeight - _guideScreenPadding,
+            highlightRect.bottom + _guideConnectorGap,
           ).toDouble();
     final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + _guideBubbleWidth - 28)
+        .clamp(left + 28, left + bubbleWidth - 28)
         .toDouble();
 
     return _RecruitGuideBubbleLayout(
@@ -655,13 +673,74 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       top: top,
       connectorStart: Offset(
         connectorX,
-        showAbove ? top + _guideBubbleHeight : top,
+        showAbove ? top + bubbleHeight : top,
       ),
       connectorEnd: Offset(
         highlightRect.center.dx,
         showAbove ? highlightRect.top : highlightRect.bottom,
       ),
     );
+  }
+
+  Size _resolveGuideBubbleSize({
+    required Size availableSize,
+    required ThemeData theme,
+    required String title,
+    required String description,
+  }) {
+    final isDesktop = PlatformInfos.isDesktop;
+    final maxWidth = max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
+    final width = min(preferredWidth, maxWidth);
+    const horizontalPadding = 36.0;
+    final titleWidth = max(120.0, width - horizontalPadding - 52.0);
+    final bodyWidth = max(120.0, width - horizontalPadding);
+    final titleHeight = _measureGuideTextHeight(
+      text: title,
+      maxWidth: titleWidth,
+      style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF111827),
+          ) ??
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    );
+    final bodyHeight = _measureGuideTextHeight(
+      text: description,
+      maxWidth: bodyWidth,
+      style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF374151),
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ) ??
+          const TextStyle(fontSize: 14, height: 1.45, fontWeight: FontWeight.w500),
+    );
+    final preferredHeight = 18.0 +
+        max(titleHeight, 22.0) +
+        14.0 +
+        bodyHeight +
+        16.0 +
+        52.0 +
+        16.0;
+    final minHeight = isDesktop ? 220.0 : _guideBubbleHeight;
+    final maxHeight = max(
+      minHeight,
+      min(isDesktop ? 320.0 : 280.0, availableSize.height - (_guideScreenPadding * 2)),
+    );
+    final height = preferredHeight.clamp(minHeight, maxHeight).toDouble();
+    return Size(width, height);
+  }
+
+  double _measureGuideTextHeight({
+    required String text,
+    required double maxWidth,
+    required TextStyle style,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: null,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
   }
 
   Widget _buildGuideBubble({
@@ -712,15 +791,19 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
               ],
             ),
             const SizedBox(height: 14),
-            Text(
-              description,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF374151),
-                height: 1.45,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF374151),
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             Row(
               children: [
                 TextButton(

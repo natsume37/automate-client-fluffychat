@@ -194,18 +194,23 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     try {
       final result = await showDialog<HireResult>(
         context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: CustomHireDialog(
-              repository: repository,
-              isDialog: true,
-              showRecruitGuide: showRecruitGuide,
-              onRecruitGuideCompleted: _markRecruitGuideCompleted,
+        builder: (dialogContext) {
+          final dialogWidth = (MediaQuery.sizeOf(dialogContext).width - 48)
+              .clamp(520.0, 580.0)
+              .toDouble();
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: SizedBox(
+              width: dialogWidth,
+              child: CustomHireDialog(
+                repository: repository,
+                isDialog: true,
+                showRecruitGuide: showRecruitGuide,
+                onRecruitGuideCompleted: _markRecruitGuideCompleted,
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
 
       if (!mounted || result == null) return;

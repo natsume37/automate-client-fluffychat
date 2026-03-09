@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 class RecruitEntryGuideHighlight extends StatefulWidget {
   final Widget child;
@@ -33,6 +34,7 @@ class _RecruitEntryGuideHighlightState
   static const double _guideBubbleHeight = 176;
   static const double _guideHighlightPadding = 10;
   static const double _guideScreenPadding = 16;
+  static const double _guideConnectorGap = 36;
 
   final GlobalKey _targetKey = GlobalKey();
   OverlayEntry? _overlayEntry;
@@ -133,7 +135,17 @@ class _RecruitEntryGuideHighlightState
     final targetRect = targetOrigin & targetBox.size;
     final highlightRect = targetRect.inflate(_guideHighlightPadding);
     final overlaySize = overlayBox.size;
-    final bubbleLayout = _buildGuideBubbleLayout(overlaySize, highlightRect);
+    final bubbleSize = _resolveGuideBubbleSize(
+      availableSize: overlaySize,
+      theme: Theme.of(context),
+      title: widget.title,
+      description: widget.description,
+    );
+    final bubbleLayout = _buildGuideBubbleLayout(
+      overlaySize,
+      highlightRect,
+      bubbleSize,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -187,8 +199,8 @@ class _RecruitEntryGuideHighlightState
           Positioned(
             left: bubbleLayout.left,
             top: bubbleLayout.top,
-            width: _guideBubbleWidth,
-            height: _guideBubbleHeight,
+            width: bubbleSize.width,
+            height: bubbleSize.height,
             child: _buildGuideBubble(),
           ),
         ],
@@ -240,26 +252,35 @@ class _RecruitEntryGuideHighlightState
   _RecruitGuideBubbleLayout _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
+    Size bubbleSize,
   ) {
-    final showAbove = highlightRect.center.dy > size.height * 0.55;
+    final bubbleWidth = bubbleSize.width;
+    final bubbleHeight = bubbleSize.height;
+    final spaceAbove =
+        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
+    final spaceBelow =
+        size.height - highlightRect.bottom - _guideScreenPadding - _guideConnectorGap;
+    final showAbove = spaceAbove >= bubbleHeight
+        ? true
+        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
     final maxLeft = max(
       _guideScreenPadding,
-      size.width - _guideBubbleWidth - _guideScreenPadding,
+      size.width - bubbleWidth - _guideScreenPadding,
     );
-    final left = (highlightRect.center.dx - (_guideBubbleWidth / 2))
+    final left = (highlightRect.center.dx - (bubbleWidth / 2))
         .clamp(_guideScreenPadding, maxLeft)
         .toDouble();
     final top = showAbove
         ? max(
             _guideScreenPadding,
-            highlightRect.top - _guideBubbleHeight - 36,
+            highlightRect.top - bubbleHeight - _guideConnectorGap,
           ).toDouble()
         : min(
-            size.height - _guideBubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + 36,
+            size.height - bubbleHeight - _guideScreenPadding,
+            highlightRect.bottom + _guideConnectorGap,
           ).toDouble();
     final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + _guideBubbleWidth - 28)
+        .clamp(left + 28, left + bubbleWidth - 28)
         .toDouble();
 
     return _RecruitGuideBubbleLayout(
@@ -267,13 +288,74 @@ class _RecruitEntryGuideHighlightState
       top: top,
       connectorStart: Offset(
         connectorX,
-        showAbove ? top + _guideBubbleHeight : top,
+        showAbove ? top + bubbleHeight : top,
       ),
       connectorEnd: Offset(
         highlightRect.center.dx,
         showAbove ? highlightRect.top : highlightRect.bottom,
       ),
     );
+  }
+
+  Size _resolveGuideBubbleSize({
+    required Size availableSize,
+    required ThemeData theme,
+    required String title,
+    required String description,
+  }) {
+    final isDesktop = PlatformInfos.isDesktop;
+    final maxWidth = max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
+    final width = min(preferredWidth, maxWidth);
+    const horizontalPadding = 36.0;
+    final titleWidth = max(120.0, width - horizontalPadding);
+    final bodyWidth = max(120.0, width - horizontalPadding);
+    final titleHeight = _measureGuideTextHeight(
+      text: title,
+      maxWidth: titleWidth,
+      style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF111827),
+          ) ??
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    );
+    final bodyHeight = _measureGuideTextHeight(
+      text: description,
+      maxWidth: bodyWidth,
+      style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF374151),
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ) ??
+          const TextStyle(fontSize: 14, height: 1.45, fontWeight: FontWeight.w500),
+    );
+    final preferredHeight = 18.0 +
+        max(titleHeight, 22.0) +
+        14.0 +
+        bodyHeight +
+        16.0 +
+        52.0 +
+        16.0;
+    final minHeight = isDesktop ? 208.0 : _guideBubbleHeight;
+    final maxHeight = max(
+      minHeight,
+      min(isDesktop ? 300.0 : 260.0, availableSize.height - (_guideScreenPadding * 2)),
+    );
+    final height = preferredHeight.clamp(minHeight, maxHeight).toDouble();
+    return Size(width, height);
+  }
+
+  double _measureGuideTextHeight({
+    required String text,
+    required double maxWidth,
+    required TextStyle style,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: null,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
   }
 
   Widget _buildGuideBubble() {
@@ -311,15 +393,19 @@ class _RecruitEntryGuideHighlightState
               ],
             ),
             const SizedBox(height: 14),
-            Text(
-              widget.description,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF374151),
-                height: 1.45,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  widget.description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF374151),
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             Row(
               children: [
                 TextButton(
