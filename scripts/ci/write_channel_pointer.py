@@ -13,6 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--channel", required=True, choices=["dev", "test", "release"])
     parser.add_argument("--app-name", required=True)
+    parser.add_argument("--build-version", required=True)
     parser.add_argument("--git-sha", required=True)
     parser.add_argument("--manifest-key", required=True)
     parser.add_argument("--output", required=True)
@@ -23,6 +24,7 @@ def main() -> None:
     pointer = {
         "channel": args.channel,
         "app": args.app_name,
+        "build_version": args.build_version,
         "git_sha": args.git_sha,
         "manifest_key": args.manifest_key,
         "source_run_id": args.source_run_id,

@@ -39,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - run: cat .github/workflows/versions.env >> $GITHUB_ENV
       - uses: subosito/flutter-action@v2
         with:
@@ -47,7 +49,10 @@ jobs:
       - run: flutter pub get
       - run: flutter gen-l10n
       - name: Check formatting
-        run: dart format lib/ test/ --set-exit-if-changed
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: ./scripts/ci/check_format_changed_dart.sh
       - name: Static analysis
         run: flutter analyze
       - name: Unit tests
@@ -200,18 +205,30 @@ jobs:
 
           find dist -type f | sort
 
+      - name: Compute build version
+        id: build_version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          build_version="$(python3 -c 'import os; print(f"{int(os.environ[\"RUN_NUMBER\"]) / 100:.2f}")')"
+          echo "build_version=${build_version}" >> "$GITHUB_OUTPUT"
+          echo "Build version: ${build_version}"
+
       - name: Generate immutable manifest
         env:
           APP_NAME: ${{ inputs.app_name }}
           GIT_SHA: ${{ github.sha }}
+          BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
         run: |
           set -euo pipefail
           mkdir -p manifests
           scripts/ci/generate_cos_manifest.py \
             --app-name "$APP_NAME" \
+            --build-version "$BUILD_VERSION" \
             --git-sha "$GIT_SHA" \
             --input-dir dist \
-            --output "manifests/${GIT_SHA}.json"
+            --output "manifests/${BUILD_VERSION}.json"
 
       - name: Install coscmd
         run: |
@@ -236,24 +253,26 @@ jobs:
         env:
           APP_NAME: ${{ inputs.app_name }}
           GIT_SHA: ${{ github.sha }}
+          BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
         run: |
           set -euo pipefail
           for platform_dir in dist/*; do
             [ -d "$platform_dir" ] || continue
             platform_name="$(basename "$platform_dir")"
             while IFS= read -r -d '' file_path; do
-              object_key="artifacts/${APP_NAME}/${GIT_SHA}/${platform_name}/$(basename "$file_path")"
+              object_key="artifacts/${APP_NAME}/${BUILD_VERSION}/${GIT_SHA}/${platform_name}/$(basename "$file_path")"
               coscmd upload -f "$file_path" "$object_key"
             done < <(find "$platform_dir" -type f -print0)
           done
 
-          coscmd upload -f "manifests/${GIT_SHA}.json" "manifests/${GIT_SHA}.json"
+          coscmd upload -f "manifests/${BUILD_VERSION}.json" "manifests/${BUILD_VERSION}.json"
 
       - name: Write channel pointer
         if: inputs.target_channel != 'none'
         env:
           CHANNEL: ${{ inputs.target_channel }}
           APP_NAME: ${{ inputs.app_name }}
+          BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
           GIT_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
@@ -262,8 +281,9 @@ jobs:
           scripts/ci/write_channel_pointer.py \
             --channel "$CHANNEL" \
             --app-name "$APP_NAME" \
+            --build-version "$BUILD_VERSION" \
             --git-sha "$GIT_SHA" \
-            --manifest-key "manifests/${GIT_SHA}.json" \
+            --manifest-key "manifests/${BUILD_VERSION}.json" \
             --source-run-id "$GITHUB_RUN_ID" \
             --source-ref "$GITHUB_REF_NAME" \
             --output "channels/${CHANNEL}.json"

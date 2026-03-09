@@ -77,6 +77,7 @@ flutter upgrade
 
 `Cross Platform CI` 支持手动触发后将产物上传到腾讯 COS，并可选更新 `dev/test/release` 渠道指针。
 当前上传平台为：Android、Linux、Windows。
+版本号按工作流运行号自动递增，每次增加 `0.01`，用于避免同 key 覆盖。
 
 ### 触发方式
 
@@ -97,11 +98,11 @@ flutter upgrade
 
 ### 存储结构
 
-上传后结构如下（`{git_sha}` 为本次构建提交）：
+上传后结构如下（`{build_version}` 每次发布 +0.01，`{git_sha}` 为本次构建提交）：
 
 ```text
-artifacts/{app_name}/{git_sha}/{platform}/{file}
-manifests/{git_sha}.json
+artifacts/{app_name}/{build_version}/{git_sha}/{platform}/{file}
+manifests/{build_version}.json
 channels/dev.json
 channels/test.json
 channels/release.json
@@ -110,5 +111,5 @@ channels/release.json
 说明：
 
 1. `artifacts` 为不可变产物目录
-2. `manifests/{git_sha}.json` 记录每个文件的校验和、大小、平台和对象 key
+2. `manifests/{build_version}.json` 记录每个文件的校验和、大小、平台和对象 key
 3. `channels/*.json` 只保存当前渠道指向的版本信息，可用于快速回滚

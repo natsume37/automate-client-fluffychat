@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - run: ./scripts/generate-locale-config.sh
       - run: git diff --exit-code
       - run: cat .github/workflows/versions.env >> $GITHUB_ENV
@@ -19,7 +21,10 @@ jobs:
       - run: flutter pub get
       - run: flutter gen-l10n
       - name: Check formatting
-        run: dart format lib/ test/ --set-exit-if-changed
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          HEAD_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.sha }}
+        run: ./scripts/ci/check_format_changed_dart.sh
       - name: Check import formatting
         run: dart run import_sorter:main --no-comments --exit-if-changed
       - name: Check license compliance

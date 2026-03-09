@@ -24,6 +24,7 @@ def sha256_file(file_path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app-name", required=True)
+    parser.add_argument("--build-version", required=True)
     parser.add_argument("--git-sha", required=True)
     parser.add_argument("--input-dir", required=True)
     parser.add_argument("--output", required=True)
@@ -36,7 +37,7 @@ def main() -> None:
         raise SystemExit(f"Input directory not found: {input_dir}")
 
     artifacts: list[dict[str, object]] = []
-    base_key = f"artifacts/{args.app_name}/{args.git_sha}"
+    base_key = f"artifacts/{args.app_name}/{args.build_version}/{args.git_sha}"
 
     for platform_dir in sorted(p for p in input_dir.iterdir() if p.is_dir()):
         platform = platform_dir.name
@@ -56,6 +57,7 @@ def main() -> None:
 
     manifest = {
         "app": args.app_name,
+        "build_version": args.build_version,
         "git_sha": args.git_sha,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifact_count": len(artifacts),
