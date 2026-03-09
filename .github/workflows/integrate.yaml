@@ -54,6 +54,8 @@ jobs:
       - uses: ./.github/actions/free_up_space
       - uses: moonrepo/setup-rust@v1
       - run: flutter pub get
+      - name: Ensure Android NDK
+        run: bash ./scripts/ci/ensure_android_ndk.sh
       - run: flutter build apk --debug --target-platform android-arm64
 
   build_debug_web:

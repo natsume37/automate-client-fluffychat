@@ -152,6 +152,8 @@ jobs:
             echo "storeFile=../key.jks"
           } >> key.properties
       - run: flutter pub get
+      - name: Ensure Android NDK
+        run: bash ./scripts/ci/ensure_android_ndk.sh
       - run: flutter build apk --release --target-platform android-arm64
       - uses: actions/upload-artifact@v4
         with:
