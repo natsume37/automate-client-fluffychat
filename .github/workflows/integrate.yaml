@@ -71,12 +71,12 @@ jobs:
         run: bash ./scripts/ci/ensure_android_ndk.sh
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: flutter build apk --debug --target-platform android-arm64 --dart-define-from-file=ci.env.json
 
@@ -96,12 +96,12 @@ jobs:
         run: ./scripts/prepare-web.sh
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: flutter build web --dart-define-from-file=ci.env.json
 
@@ -126,11 +126,11 @@ jobs:
       - run: ./flutter/bin/flutter pub get
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }} --dart-define-from-file=ci.env.json
