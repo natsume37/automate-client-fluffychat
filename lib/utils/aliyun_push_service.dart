@@ -86,7 +86,9 @@ class AliyunPushService {
 
   /// 阿里云推送配置（通过 --dart-define-from-file=env.json 注入）
   static const _androidAppKey = String.fromEnvironment('PUSH_ANDROID_APP_KEY');
-  static const _androidAppSecret = String.fromEnvironment('PUSH_ANDROID_APP_SECRET');
+  static const _androidAppSecret = String.fromEnvironment(
+    'PUSH_ANDROID_APP_SECRET',
+  );
   static const _iosAppKey = String.fromEnvironment('PUSH_IOS_APP_KEY');
   static const _iosAppSecret = String.fromEnvironment('PUSH_IOS_APP_SECRET');
 
@@ -123,7 +125,9 @@ class AliyunPushService {
     }
 
     if (!_hasSdkCredentials) {
-      Logs().w('[AliyunPush] Missing SDK credentials, skipping initialization');
+      Logs().w(
+        '[AliyunPush] Missing SDK credentials, skipping initialization',
+      );
       _audit('init skipped missing credentials');
       return false;
     }
