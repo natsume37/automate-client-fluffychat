@@ -8,6 +8,7 @@ import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/backend/exceptions.dart';
+import 'package:psygo/core/api_client.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'uia_request_manager.dart';
@@ -41,10 +42,20 @@ extension LocalizedExceptionExtension on Object {
     }
     if (this is AutomateBackendException) {
       final exception = this as AutomateBackendException;
+      if (exception.message.trim().isNotEmpty) {
+        return exception.message;
+      }
       if (exception.statusCode == null) {
         return L10n.of(context).noConnectionToTheServer;
       }
       return L10n.of(context).serverError;
+    }
+    if (this is ApiException) {
+      final exception = this as ApiException;
+      if (exception.message.trim().isNotEmpty) {
+        return exception.message;
+      }
+      return exception.toString();
     }
     if (this is MatrixException) {
       switch ((this as MatrixException).error) {
@@ -95,6 +106,12 @@ extension LocalizedExceptionExtension on Object {
     if (this is FormatException &&
         exceptionContext == ExceptionContext.checkServerSupportInfo) {
       return L10n.of(context).noContactInformationProvided;
+    }
+    if (this is Exception || this is Error) {
+      final message = toString().trim();
+      if (message.isNotEmpty && !message.startsWith('Instance of ')) {
+        return message;
+      }
     }
     if (this is String) return toString();
     if (this is UiaException) return toString();

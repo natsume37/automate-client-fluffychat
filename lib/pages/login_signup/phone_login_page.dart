@@ -128,8 +128,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       _startCountdown();
 
       _showSuccessToast(l10n.authCodeSentToast);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (!mounted) return;
+      debugPrint('验证码发送错误: $e');
+      debugPrintStack(
+        label: '[PhoneLogin] requestVerificationCode stack',
+        stackTrace: stackTrace,
+      );
       setState(() {
         phoneError = e.toLocalizedString(
           context,
@@ -241,8 +246,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       if (!mounted) return;
 
       await handlePostLogin(authResponse);
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('验证码登录错误: $e');
+      debugPrintStack(
+        label: '[PhoneLogin] verifyAndLogin stack',
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
         codeError = e.toLocalizedString(

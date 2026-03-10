@@ -128,8 +128,12 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       debugPrint('[LoginFlow] Matrix login success, navigating to $destination');
       PsygoApp.router.go(destination);
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Matrix 登录失败: $e');
+      debugPrintStack(
+        label: '[LoginFlow] Matrix login stack',
+        stackTrace: stackTrace,
+      );
       // 清除登录状态和 Matrix 客户端
       await _clearAuthState();
       if (mounted) {
