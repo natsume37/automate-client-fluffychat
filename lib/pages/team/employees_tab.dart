@@ -1127,7 +1127,6 @@ class EmployeesTabState extends State<EmployeesTab>
       visible: widget.showRecruitGuideHighlight,
       title: l10n.customHire,
       description: l10n.customHireDescription,
-      skipLabel: l10n.skip,
       actionLabel: l10n.customHire,
       onAction: onNavigateToRecruit,
       child: Container(

@@ -206,10 +206,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     unawaited(_completeRecruitGuideIfNeeded());
   }
 
-  void _skipRecruitGuide() {
-    _dismissRecruitGuide();
-  }
-
   void _nextRecruitGuide() {
     final steps = _guideSteps(L10n.of(context));
     if (_recruitGuideStepIndex >= steps.length - 1) {
@@ -813,15 +809,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             ),
             const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: _skipRecruitGuide,
-                  child: Text(
-                    l10n.skip,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const Spacer(),
                 FilledButton(
                   onPressed: _isGuidePrimaryActionEnabled
                       ? () => unawaited(_handleGuidePrimaryAction(l10n))

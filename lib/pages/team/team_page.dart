@@ -300,7 +300,6 @@ class TeamPageView extends StatelessWidget {
         visible: controller.showRecruitGuideHighlight,
         title: l10n.customHire,
         description: l10n.customHireDescription,
-        skipLabel: l10n.skip,
         actionLabel: l10n.customHire,
         onAction: () => unawaited(controller.openRecruitMenu(context)),
         child: Container(

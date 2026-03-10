@@ -8,7 +8,6 @@ class RecruitEntryGuideHighlight extends StatefulWidget {
   final bool visible;
   final String title;
   final String description;
-  final String skipLabel;
   final String actionLabel;
   final VoidCallback? onAction;
 
@@ -18,7 +17,6 @@ class RecruitEntryGuideHighlight extends StatefulWidget {
     required this.visible,
     required this.title,
     required this.description,
-    required this.skipLabel,
     required this.actionLabel,
     this.onAction,
   });
@@ -407,15 +405,8 @@ class _RecruitEntryGuideHighlightState
             ),
             const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: _dismissOverlay,
-                  child: Text(
-                    widget.skipLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const Spacer(),
                 FilledButton(
                   onPressed: _handleAction,
                   style: FilledButton.styleFrom(
