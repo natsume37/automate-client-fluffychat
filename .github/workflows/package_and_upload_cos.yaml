@@ -287,6 +287,10 @@ jobs:
           merge-multiple: true
       - name: Show downloaded files
         run: find downloaded_artifacts -type f | sort
+      - name: Install COS Python SDK
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "cos-python-sdk-v5>=1.9.0,<2"
       - name: Upload files by channel/platform
         env:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
@@ -324,6 +328,9 @@ jobs:
                 --region "$COS_REGION" \
                 --file "$file_path" \
                 --object-key "$object_key" \
+                --part-size-mb 10 \
+                --max-thread 8 \
+                --retry 5 \
                 --timeout 1200; then
                 uploaded=1
                 break
