@@ -117,10 +117,14 @@ jobs:
       - run: flutter build linux --release --dart-define-from-file=ci.env.json
       - name: Pack Linux artifact
         run: tar -czf fluffychat-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+      - name: Pack Ubuntu .deb artifact
+        run: bash ./scripts/ci/package_linux_deb.sh
       - uses: actions/upload-artifact@v4
         with:
           name: fluffychat-linux-x64
-          path: fluffychat-linux-x64.tar.gz
+          path: |
+            fluffychat-linux-x64.tar.gz
+            build/linux/psygo-linux-amd64.deb
 
   build_windows:
     name: Build Windows

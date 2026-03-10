@@ -92,7 +92,7 @@ flutter upgrade
 ## CI 对象存储发布（腾讯 COS）
 
 `Cross Platform CI` 支持手动触发后将产物上传到腾讯 COS，并可选更新 `dev/test/release` 渠道指针。
-当前上传平台为：Android、Linux、Windows。
+当前上传平台为：Android、Linux、Windows、Web。
 版本号按工作流运行号自动递增，每次增加 `0.01`，用于避免同 key 覆盖。
 
 ### 触发方式
@@ -102,6 +102,11 @@ flutter upgrade
 1. `upload_to_cos`：是否上传构建产物到 COS（布尔值）
 2. `target_channel`：是否更新渠道指针（`none/dev/test/release`）
 3. `app_name`：对象 key 前缀中的应用名（默认 `fluffychat`）
+
+Linux 产物会同时包含：
+
+1. `fluffychat-linux-x64.tar.gz`
+2. `psygo-linux-amd64.deb`
 
 ### COS 必需 Secrets
 
@@ -130,6 +135,7 @@ flutter upgrade
 ```text
 artifacts/{app_name}/{build_version}/{git_sha}/{platform}/{file}
 {channel}/{app_name}/linux/fluffychat-linux-x64.tar.gz
+{channel}/{app_name}/linux/psygo-linux-amd64.deb
 {channel}/{app_name}/windows64/fluffychat-windows-x64.zip
 {channel}/{app_name}/android-apk/fluffychat-android-apk.apk
 {channel}/{app_name}/manifest.json
