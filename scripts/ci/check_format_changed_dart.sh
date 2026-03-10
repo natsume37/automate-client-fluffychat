@@ -39,4 +39,9 @@ fi
 printf 'Checking format for %s changed Dart files:\n' "${#changed_dart_files[@]}"
 printf '%s\n' "${changed_dart_files[@]}"
 
-dart format --set-exit-if-changed "${changed_dart_files[@]}"
+if ! dart format --output=none --set-exit-if-changed "${changed_dart_files[@]}"; then
+  echo
+  echo "Formatting check failed. Run:"
+  printf '  dart format %q\n' "${changed_dart_files[@]}"
+  exit 1
+fi
