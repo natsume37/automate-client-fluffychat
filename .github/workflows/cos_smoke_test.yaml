@@ -1,0 +1,25 @@
+name: COS Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      object_prefix:
+        description: Optional object prefix for the temporary smoke file
+        required: false
+        type: string
+        default: gha-smoke-test
+
+jobs:
+  cos_smoke:
+    name: COS Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run COS smoke test
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+          COS_TEST_PREFIX: ${{ inputs.object_prefix }}
+        run: python3 test/cos_local_smoke.py
