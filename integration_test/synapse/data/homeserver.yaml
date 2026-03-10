@@ -885,6 +885,16 @@ log_config: "/data/localhost.log.config"
 #  failed_attempts:
 #    per_second: 0.17
 #    burst_count: 3
+rc_login:
+  address:
+    per_second: 10
+    burst_count: 100
+  account:
+    per_second: 10
+    burst_count: 100
+  failed_attempts:
+    per_second: 10
+    burst_count: 100
 #
 #rc_admin_redaction:
 #  per_second: 1

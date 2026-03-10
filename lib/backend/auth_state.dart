@@ -18,19 +18,21 @@ class PsygoAuthState extends ChangeNotifier {
   static const _primaryKey = 'automate_primary_token';
   static const _refreshKey = 'automate_refresh_token';
   static const _expiresAtKey = 'automate_expires_at';
+  static const _lifetimeSecondsKey = 'automate_token_lifetime_seconds';
   static const _userIdKey = 'automate_user_id';
   static const _onboardingCompletedKey = 'automate_onboarding_completed';
   static const _matrixAccessTokenKey = 'automate_matrix_access_token';
   static const _matrixUserIdKey = 'automate_matrix_user_id';
   static const _matrixDeviceIdKey = 'automate_matrix_device_id';
 
-  // Token refresh threshold (5 minutes before expiry)
-  static const Duration _refreshThreshold = Duration(minutes: 5);
+  static const Duration _defaultRefreshThreshold = Duration(minutes: 5);
+  static const Duration _minimumRefreshThreshold = Duration(seconds: 2);
 
   bool _loggedIn = false;
   String? _primaryToken;
   String? _refreshToken;
   DateTime? _expiresAt;
+  int? _tokenLifetimeSeconds;
   String? _userId;
   bool _onboardingCompleted = true;
   String? _matrixAccessToken;
@@ -58,7 +60,7 @@ class PsygoAuthState extends ChangeNotifier {
   bool get isTokenExpiringSoon {
     if (_expiresAt == null) return true;
     final timeUntilExpiry = _expiresAt!.difference(DateTime.now());
-    return timeUntilExpiry <= _refreshThreshold;
+    return timeUntilExpiry <= _resolveRefreshThreshold();
   }
 
   /// Check if we have a valid (non-expired) token
@@ -73,6 +75,8 @@ class PsygoAuthState extends ChangeNotifier {
     _expiresAt = expiresAtStr != null
         ? DateTime.fromMillisecondsSinceEpoch(int.tryParse(expiresAtStr) ?? 0)
         : null;
+    _tokenLifetimeSeconds =
+        int.tryParse(await _storage.read(key: _lifetimeSecondsKey) ?? '');
     _userId = await _storage.read(key: _userIdKey);
     final onboardingCompletedStr =
         await _storage.read(key: _onboardingCompletedKey);
@@ -109,10 +113,15 @@ class PsygoAuthState extends ChangeNotifier {
 
     // Handle token expiry
     if (expiresIn != null) {
+      _tokenLifetimeSeconds = expiresIn;
       _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
       await _storage.write(
         key: _expiresAtKey,
         value: _expiresAt!.millisecondsSinceEpoch.toString(),
+      );
+      await _storage.write(
+        key: _lifetimeSecondsKey,
+        value: expiresIn.toString(),
       );
     }
 
@@ -147,6 +156,7 @@ class PsygoAuthState extends ChangeNotifier {
     await TokenManager.instance.updateAccessToken(accessToken, expiresIn, refreshToken: refreshToken);
     // 同步更新内存状态（避免等待事件回调）
     _primaryToken = accessToken;
+    _tokenLifetimeSeconds = expiresIn;
     _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
     if (refreshToken != null && refreshToken.isNotEmpty) {
       _refreshToken = refreshToken;
@@ -166,6 +176,7 @@ class PsygoAuthState extends ChangeNotifier {
       _storage.delete(key: _matrixAccessTokenKey),
       _storage.delete(key: _matrixUserIdKey),
       _storage.delete(key: _matrixDeviceIdKey),
+      _storage.delete(key: _lifetimeSecondsKey),
     ]);
     notifyListeners();
   }
@@ -198,6 +209,7 @@ class PsygoAuthState extends ChangeNotifier {
     _primaryToken = null;
     _refreshToken = null;
     _expiresAt = null;
+    _tokenLifetimeSeconds = null;
     _userId = null;
     _onboardingCompleted = false;
     _matrixAccessToken = null;
@@ -210,5 +222,29 @@ class PsygoAuthState extends ChangeNotifier {
   void dispose() {
     _tokenEventSubscription?.cancel();
     super.dispose();
+  }
+
+  Duration _resolveRefreshThreshold() {
+    final lifetimeSeconds = _tokenLifetimeSeconds;
+    if (lifetimeSeconds == null || lifetimeSeconds <= 0) {
+      return _defaultRefreshThreshold;
+    }
+
+    final lifetime = Duration(seconds: lifetimeSeconds);
+    if (lifetime <= const Duration(seconds: 30)) {
+      return _minimumRefreshThreshold;
+    }
+    if (lifetime <= const Duration(minutes: 2)) {
+      return const Duration(seconds: 10);
+    }
+
+    final adaptive = Duration(seconds: lifetime.inSeconds ~/ 5);
+    if (adaptive > _defaultRefreshThreshold) {
+      return _defaultRefreshThreshold;
+    }
+    if (adaptive < _minimumRefreshThreshold) {
+      return _minimumRefreshThreshold;
+    }
+    return adaptive;
   }
 }

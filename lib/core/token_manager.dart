@@ -34,10 +34,11 @@ class TokenManager {
   static const String _primaryKey = 'automate_primary_token';
   static const String _refreshKey = 'automate_refresh_token';
   static const String _expiresAtKey = 'automate_expires_at';
+  static const String _lifetimeSecondsKey = 'automate_token_lifetime_seconds';
   static const String _userIdKey = 'automate_user_id';
 
-  // Token 过期前刷新阈值（5 分钟）
-  static const Duration _refreshThreshold = Duration(minutes: 5);
+  static const Duration _defaultRefreshThreshold = Duration(minutes: 5);
+  static const Duration _minimumRefreshThreshold = Duration(seconds: 2);
 
   // HTTP client for refresh requests
   http.Client? _httpClient;
@@ -74,7 +75,33 @@ class TokenManager {
 
     final expiresAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final timeUntilExpiry = expiresAt.difference(DateTime.now());
-    return timeUntilExpiry <= _refreshThreshold;
+    final lifetimeSeconds = int.tryParse(
+      await _storage.read(key: _lifetimeSecondsKey) ?? '',
+    );
+    return timeUntilExpiry <= _resolveRefreshThreshold(lifetimeSeconds);
+  }
+
+  Duration _resolveRefreshThreshold(int? lifetimeSeconds) {
+    if (lifetimeSeconds == null || lifetimeSeconds <= 0) {
+      return _defaultRefreshThreshold;
+    }
+
+    final lifetime = Duration(seconds: lifetimeSeconds);
+    if (lifetime <= const Duration(seconds: 30)) {
+      return _minimumRefreshThreshold;
+    }
+    if (lifetime <= const Duration(minutes: 2)) {
+      return const Duration(seconds: 10);
+    }
+
+    final adaptive = Duration(seconds: lifetime.inSeconds ~/ 5);
+    if (adaptive > _defaultRefreshThreshold) {
+      return _defaultRefreshThreshold;
+    }
+    if (adaptive < _minimumRefreshThreshold) {
+      return _minimumRefreshThreshold;
+    }
+    return adaptive;
   }
 
   /// 获取当前 Access Token
@@ -143,6 +170,10 @@ class TokenManager {
         final writes = <Future<void>>[
           _storage.write(key: _primaryKey, value: newAccessToken),
           _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
+          _storage.write(
+            key: _lifetimeSecondsKey,
+            value: expiresIn.toString(),
+          ),
         ];
         // 服务端返回新的 refresh token（一次性）
         if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
@@ -183,6 +214,12 @@ class TokenManager {
     if (expiresIn != null) {
       final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
       writes.add(_storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()));
+      writes.add(
+        _storage.write(
+          key: _lifetimeSecondsKey,
+          value: expiresIn.toString(),
+        ),
+      );
     }
 
     await Future.wait(writes);
@@ -194,6 +231,10 @@ class TokenManager {
     final writes = <Future<void>>[
       _storage.write(key: _primaryKey, value: accessToken),
       _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
+      _storage.write(
+        key: _lifetimeSecondsKey,
+        value: expiresIn.toString(),
+      ),
     ];
     if (refreshToken != null && refreshToken.isNotEmpty) {
       writes.add(_storage.write(key: _refreshKey, value: refreshToken));
@@ -208,6 +249,7 @@ class TokenManager {
       _storage.delete(key: _primaryKey),
       _storage.delete(key: _refreshKey),
       _storage.delete(key: _expiresAtKey),
+      _storage.delete(key: _lifetimeSecondsKey),
       _storage.delete(key: _userIdKey),
     ]);
   }

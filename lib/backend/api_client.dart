@@ -127,33 +127,7 @@ class PsygoApiClient {
         data: {'phone': phone, ...authDevicePayload},
       );
     } on DioException catch (e) {
-      debugPrint(
-        '[API] sendVerificationCode DioException: ${e.type}, ${e.message}',
-      );
-      debugPrint('[API] DioException error: ${e.error}');
-
-      final responseData = e.response?.data;
-      var errorMsg = '验证码发送失败，请稍后重试';
-
-      // 检查是否是 TLS/SSL 证书错误
-      if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.unknown) {
-        final errorStr = e.error?.toString() ?? '';
-        if (errorStr.contains('CERTIFICATE_VERIFY_FAILED') ||
-            errorStr.contains('HandshakeException') ||
-            errorStr.contains('certificate')) {
-          errorMsg = '网络安全连接失败，请检查网络或更新系统';
-          debugPrint('[API] SSL/TLS certificate error detected');
-        }
-      }
-
-      if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['message']?.toString() ?? errorMsg;
-      }
-      throw AutomateBackendException(
-        errorMsg,
-        statusCode: e.response?.statusCode,
-      );
+      throw _mapAuthDioException(e, '验证码发送失败，请稍后重试');
     }
 
     final data = res.data ?? {};
@@ -170,9 +144,10 @@ class PsygoApiClient {
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
     final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
-    final res = await _dio.post<Map<String, dynamic>>(
+    final res = await _postAuthRequest(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {'phone': phone, 'code': code, ...authDevicePayload},
+      {'phone': phone, 'code': code, ...authDevicePayload},
+      '登录失败',
     );
     return _handleAuthResponse(res, '登录失败');
   }
@@ -180,11 +155,57 @@ class PsygoApiClient {
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
     final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
-    final res = await _dio.post<Map<String, dynamic>>(
+    final res = await _postAuthRequest(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {'access_token': accessToken, ...authDevicePayload},
+      {'access_token': accessToken, ...authDevicePayload},
+      '登录失败',
     );
     return _handleAuthResponse(res, '登录失败');
+  }
+
+  Future<Response<Map<String, dynamic>>> _postAuthRequest(
+    String url,
+    Map<String, dynamic> data,
+    String fallbackMessage,
+  ) async {
+    try {
+      return await _dio.post<Map<String, dynamic>>(url, data: data);
+    } on DioException catch (e) {
+      throw _mapAuthDioException(e, fallbackMessage);
+    }
+  }
+
+  AutomateBackendException _mapAuthDioException(
+    DioException e,
+    String fallbackMessage,
+  ) {
+    debugPrint('[API] Auth DioException: ${e.type}, ${e.message}');
+    debugPrint('[API] DioException error: ${e.error}');
+
+    final responseData = e.response?.data;
+    var errorMsg = fallbackMessage;
+
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown) {
+      final errorStr = e.error?.toString() ?? '';
+      if (errorStr.contains('CERTIFICATE_VERIFY_FAILED') ||
+          errorStr.contains('HandshakeException') ||
+          errorStr.contains('certificate')) {
+        errorMsg = '网络安全连接失败，请检查网络或更新系统';
+        debugPrint('[API] SSL/TLS certificate error detected');
+      }
+    }
+
+    if (responseData is Map<String, dynamic>) {
+      errorMsg = responseData['message']?.toString() ?? errorMsg;
+    } else if ((e.message ?? '').trim().isNotEmpty) {
+      errorMsg = e.message!.trim();
+    }
+
+    return AutomateBackendException(
+      errorMsg,
+      statusCode: e.response?.statusCode,
+    );
   }
 
   Future<AuthResponse> _handleAuthResponse(
