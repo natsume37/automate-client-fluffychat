@@ -171,58 +171,6 @@ jobs:
           name: fluffychat-windows-x64
           path: fluffychat-windows-x64.zip
 
-  build_macos:
-    name: Build macOS
-    needs: test
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-      - uses: moonrepo/setup-rust@v1
-      - run: flutter pub get
-      - name: Generate Flutter build env
-        env:
-          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
-          PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
-          PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
-          PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
-          PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
-          STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
-        run: |
-          args=(--output ci.env.json)
-          if [ "$STRICT_BUILD_CONFIG" = "true" ]; then
-            args+=(
-              --require APP_NAME
-              --require K8S_NAMESPACE
-              --require API_BASE_URL
-              --require MATRIX_HOMESERVER
-            )
-          fi
-          python3 scripts/ci/write_flutter_env.py "${args[@]}"
-      - run: flutter build macos --release --dart-define-from-file=ci.env.json
-      - name: Pack macOS artifact
-        run: |
-          set -euo pipefail
-          app_path="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
-          if [ -z "$app_path" ]; then
-            echo "macOS app bundle not found"
-            exit 1
-          fi
-          ditto -c -k --sequesterRsrc --keepParent "$app_path" fluffychat-macos.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fluffychat-macos
-          path: fluffychat-macos.zip
-
   build_android_apk:
     name: Build Android APK
     needs: test
@@ -348,7 +296,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && (inputs.upload_to_cos == true || inputs.target_channel != 'none')
     needs:
       - build_linux
-      - build_macos
       - build_web
       - build_windows
       - build_android_apk
@@ -375,7 +322,6 @@ jobs:
             case "$artifact_name" in
               fluffychat-android-*) platform="android-apk" ;;
               fluffychat-linux-*) platform="linux" ;;
-              fluffychat-macos*) platform="macos" ;;
               fluffychat-web*) platform="web" ;;
               fluffychat-windows-*) platform="windows64" ;;
               *)
