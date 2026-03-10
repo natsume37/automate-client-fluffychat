@@ -34,17 +34,31 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
   Future<bool> handlePostLogin(AuthResponse authResponse) async {
     if (!mounted) return false;
 
-    debugPrint('=== 登录成功，尝试登录 Matrix ===');
-    return await loginMatrixAndRedirect();
+    debugPrint(
+      '=== 登录成功，尝试登录 Matrix: '
+      'authResponse.matrixUserId=${authResponse.matrixUserId}, '
+      'hasMatrixToken=${(authResponse.matrixAccessToken ?? '').isNotEmpty} ===',
+    );
+    return await loginMatrixAndRedirect(
+      matrixAccessToken: authResponse.matrixAccessToken,
+      matrixUserId: authResponse.matrixUserId,
+    );
   }
 
   /// 登录 Matrix 并跳转到主页
-  Future<bool> loginMatrixAndRedirect() async {
-    final matrixAccessToken = backend.auth.matrixAccessToken;
-    final matrixUserId = backend.auth.matrixUserId;
+  Future<bool> loginMatrixAndRedirect({
+    String? matrixAccessToken,
+    String? matrixUserId,
+  }) async {
+    matrixAccessToken ??= backend.auth.matrixAccessToken;
+    matrixUserId ??= backend.auth.matrixUserId;
 
-    if (matrixAccessToken == null || matrixUserId == null) {
-      debugPrint('Matrix access token 缺失，无法登录 Matrix');
+    if ((matrixAccessToken ?? '').isEmpty || (matrixUserId ?? '').isEmpty) {
+      debugPrint(
+        'Matrix access token 缺失，无法登录 Matrix. '
+        'authState.matrixUserId=${backend.auth.matrixUserId}, '
+        'authState.hasMatrixToken=${(backend.auth.matrixAccessToken ?? '').isNotEmpty}',
+      );
       // 清除登录状态
       await _clearAuthState();
       if (mounted) {
@@ -54,13 +68,16 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       return false;
     }
 
+    final resolvedMatrixAccessToken = matrixAccessToken!;
+    final resolvedMatrixUserId = matrixUserId!;
+
     try {
       final matrix = Matrix.of(context);
       final store = await SharedPreferences.getInstance();
 
       // 使用用户专属 client。登录链路优先复用内存对象，避免重复 initWithRestore。
       final client = await ClientManager.getOrCreateLoginClientForUser(
-        matrixUserId,
+        resolvedMatrixUserId,
         store,
         inMemoryClients: matrix.widget.clients,
       );
@@ -71,7 +88,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       }
 
       // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
-      final needsLogin = !client.isLogged() || client.userID != matrixUserId;
+      final needsLogin =
+          !client.isLogged() || client.userID != resolvedMatrixUserId;
       if (!needsLogin) {
         // 已登录且 userID 匹配，直接使用
         matrix.setActiveClient(client);
@@ -84,7 +102,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       }
 
       // 如果已登录但 userID 不匹配，先退出旧账号
-      if (client.isLogged() && client.userID != matrixUserId) {
+      if (client.isLogged() && client.userID != resolvedMatrixUserId) {
         try {
           await client.logout();
         } catch (_) {}
@@ -98,8 +116,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
       // 使用后端返回的 access_token 直接初始化，无需密码登录
       await client.init(
-        newToken: matrixAccessToken,
-        newUserID: matrixUserId,
+        newToken: resolvedMatrixAccessToken,
+        newUserID: resolvedMatrixUserId,
         newHomeserver: homeserverUrl,
         newDeviceName: PlatformInfos.clientName,
         // Do not block UI on first sync/load; background sync continues after init.
