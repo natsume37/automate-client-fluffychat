@@ -9,7 +9,7 @@ import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
-      : _dio = dio ?? CustomHttpClient.createDio() {
+    : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(_buildAuthInterceptor());
@@ -44,8 +44,9 @@ class PsygoApiClient {
         // 刷新成功，重试原请求
         debugPrint('[API] Token refreshed, retrying request...');
         try {
-          final newToken =
-              await TokenManager.instance.getAccessToken(autoRefresh: false);
+          final newToken = await TokenManager.instance.getAccessToken(
+            autoRefresh: false,
+          );
           options.headers['Authorization'] = 'Bearer $newToken';
           options.extra['_retried'] = true;
 
@@ -120,8 +121,7 @@ class PsygoApiClient {
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
-      final authDevicePayload =
-          await AuthDeviceIdentity.buildRequestPayload();
+      final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
         data: {'phone': phone, ...authDevicePayload},
@@ -300,10 +300,7 @@ class PsygoApiClient {
     final res = await _requestWithAuthRetry((token) {
       return _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/payments/recharge/create',
-        data: {
-          'user_id': userId,
-          'total_amount': amount,
-        },
+        data: {'user_id': userId, 'total_amount': amount},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     });
@@ -471,10 +468,7 @@ class PsygoApiClient {
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/app/version',
-      queryParameters: {
-        'version': currentVersion,
-        'platform': platform,
-      },
+      queryParameters: {'version': currentVersion, 'platform': platform},
     );
 
     final data = res.data ?? {};
@@ -615,15 +609,15 @@ class AuthResponse {
   });
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'refreshToken': refreshToken,
-        'expiresIn': expiresIn,
-        'userId': userId,
-        'phone': phone,
-        'matrixAccessToken': matrixAccessToken,
-        'matrixUserId': matrixUserId,
-        'matrixDeviceId': matrixDeviceId,
-      };
+    'token': token,
+    'refreshToken': refreshToken,
+    'expiresIn': expiresIn,
+    'userId': userId,
+    'phone': phone,
+    'matrixAccessToken': matrixAccessToken,
+    'matrixUserId': matrixUserId,
+    'matrixDeviceId': matrixDeviceId,
+  };
 }
 
 /// 充值订单创建请求
@@ -631,15 +625,12 @@ class CreateRechargeOrderRequest {
   final String userId;
   final double totalAmount;
 
-  CreateRechargeOrderRequest({
-    required this.userId,
-    required this.totalAmount,
-  });
+  CreateRechargeOrderRequest({required this.userId, required this.totalAmount});
 
   Map<String, dynamic> toJson() => {
-        'user_id': userId,
-        'total_amount': totalAmount,
-      };
+    'user_id': userId,
+    'total_amount': totalAmount,
+  };
 }
 
 /// 充值订单响应
@@ -828,10 +819,7 @@ class AgreementStatus {
   final bool allAccepted; // 是否已接受所有必需协议
   final List<AgreementAcceptance> agreements; // 各协议的接受状态
 
-  AgreementStatus({
-    required this.allAccepted,
-    required this.agreements,
-  });
+  AgreementStatus({required this.allAccepted, required this.agreements});
 
   factory AgreementStatus.fromJson(Map<String, dynamic> json) {
     final agreementsList = json['agreements'] as List<dynamic>? ?? [];
