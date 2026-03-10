@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../core/config.dart';
 import 'custom_network_image.dart';
 
 /// DiceBear 头像风格
@@ -103,7 +104,6 @@ class DiceBearAvatarPicker extends StatefulWidget {
 }
 
 class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
-  static const _baseUrl = 'https://api.dicebear.com/9.x';
   final _random = Random();
 
   late DiceBearStyle _currentStyle;
@@ -114,7 +114,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
   void initState() {
     super.initState();
     if (widget.initialAvatarUrl != null &&
-        widget.initialAvatarUrl!.contains('dicebear.com')) {
+        _isDiceBearAvatarUrl(widget.initialAvatarUrl!)) {
       _parseAvatarUrl(widget.initialAvatarUrl!);
     } else {
       _currentStyle = DiceBearStyle.values[_random.nextInt(DiceBearStyle.values.length)];
@@ -149,7 +149,14 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
   }
 
   String _buildAvatarUrl() {
-    return '$_baseUrl/${_currentStyle.apiName}/png?seed=$_currentSeed&size=256';
+    return '${PsygoConfig.dicebearBaseUrl}/${_currentStyle.apiName}/png?seed=$_currentSeed&size=256';
+  }
+
+  bool _isDiceBearAvatarUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final segments = uri.pathSegments;
+    return segments.length >= 3 && segments[0] == '9.x';
   }
 
   void _randomizeAvatar() {

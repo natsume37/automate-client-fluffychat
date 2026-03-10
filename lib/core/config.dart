@@ -32,6 +32,14 @@ class PsygoConfig {
   /// 完整 API URL
   static String get apiUrl => baseUrl + apiPrefix;
 
+  /// DiceBear API 基础 URL（可通过 dart-define 覆盖）
+  /// 例如: https://api.dicebear.com/9.x
+  static String get dicebearBaseUrl {
+    const explicit = String.fromEnvironment('DICEBEAR_BASE_URL', defaultValue: '');
+    final raw = explicit.isNotEmpty ? explicit : 'https://api.dicebear.com/9.x';
+    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+  }
+
   /// HTTP 超时配置
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 120);

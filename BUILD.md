@@ -9,6 +9,11 @@
 1. **K8S_NODE_IP**: K8s 集群节点 IP（局域网访问）
 2. **ALIYUN_SECRET_KEY**: 阿里云一键登录 SDK 密钥
 
+### 可选环境变量
+
+1. **DICEBEAR_BASE_URL**: 自托管 DiceBear 地址（优先级最高）
+2. 若未设置 `DICEBEAR_BASE_URL`，默认使用 `https://api.dicebear.com/9.x`
+
 ### 配置步骤
 
 1. 复制环境变量模板：
@@ -20,7 +25,8 @@ cp env.json.example env.json
 ```json
 {
   "K8S_NODE_IP": "192.168.31.22",
-  "ALIYUN_SECRET_KEY": "your-actual-secret-key"
+  "ALIYUN_SECRET_KEY": "your-actual-secret-key",
+  "DICEBEAR_BASE_URL": "https://api.dicebear.com/9.x"
 }
 ```
 

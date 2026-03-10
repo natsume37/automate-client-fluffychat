@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
+import '../core/config.dart';
 import '../core/api_client.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
@@ -118,7 +119,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final seed =
         List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
-    _avatarUrl = 'https://api.dicebear.com/9.x/$style/png?seed=$seed&size=256';
+    _avatarUrl =
+        '${PsygoConfig.dicebearBaseUrl}/$style/png?seed=$seed&size=256';
   }
 
   @override
