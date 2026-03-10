@@ -4,6 +4,7 @@ import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
 import '../core/token_manager.dart';
+import '../utils/auth_device_identity.dart';
 import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
@@ -114,13 +115,16 @@ class PsygoApiClient {
     return response;
   }
 
-  /// 发送短信验证码
+  /// 发送短信验证码。
+  /// 后端应按 `phone + auth_device_id` 做 60 秒限频，避免不同设备互相阻塞。
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
+      final authDevicePayload =
+          await AuthDeviceIdentity.buildRequestPayload();
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
-        data: {'phone': phone},
+        data: {'phone': phone, ...authDevicePayload},
       );
     } on DioException catch (e) {
       debugPrint(
@@ -165,18 +169,20 @@ class PsygoApiClient {
 
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {'phone': phone, 'code': code},
+      data: {'phone': phone, 'code': code, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }
 
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {'access_token': accessToken},
+      data: {'access_token': accessToken, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }
