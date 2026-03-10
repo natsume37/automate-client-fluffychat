@@ -20,6 +20,7 @@ import '../../../utils/platform_infos.dart';
 import '../../../utils/url_launcher.dart';
 import '../../bootstrap/bootstrap_dialog.dart';
 import 'audio_player.dart';
+import 'amap_taxi_card.dart';
 import 'cute_events.dart';
 import 'html_message.dart';
 import 'image_bubble.dart';
@@ -253,6 +254,65 @@ class MessageContent extends StatelessWidget {
             final bigEmotes = event.onlyEmotes &&
                 event.numberEmotes > 0 &&
                 event.numberEmotes <= 3;
+            final taxiLinks = AmapTaxiLinkData.extractFromText(event.body);
+            final showTaxiCardsAtBottom =
+                AmapTaxiLinkData.hasLeadingText(event.body);
+            final textWithoutTaxiLinks =
+                AmapTaxiLinkData.stripFromText(event.body);
+            if (taxiLinks.isNotEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!showTaxiCardsAtBottom)
+                      for (var i = 0; i < taxiLinks.length; i++) ...[
+                        AmapTaxiCard(link: taxiLinks[i]),
+                        if (i < taxiLinks.length - 1 ||
+                            textWithoutTaxiLinks.isNotEmpty)
+                          const SizedBox(height: 12),
+                      ],
+                    if (textWithoutTaxiLinks.isNotEmpty) ...[
+                      HtmlMessage(
+                        html:
+                            MarkdownHelper.toHtmlIfNeeded(textWithoutTaxiLinks),
+                        textColor: textColor,
+                        room: event.room,
+                        fontSize: AppSettings.fontSizeFactor.value *
+                            AppConfig.messageFontSize *
+                            (bigEmotes ? 5 : 1),
+                        limitHeight: !selected,
+                        linkStyle: TextStyle(
+                          color: linkColor,
+                          fontSize: AppSettings.fontSizeFactor.value *
+                              AppConfig.messageFontSize,
+                          decoration: TextDecoration.underline,
+                          decorationColor: linkColor,
+                        ),
+                        onOpen: (url) =>
+                            UrlLauncher(context, url.url).launchUrl(),
+                        eventId: event.eventId,
+                        checkboxCheckedEvents: event.aggregatedEvents(
+                          timeline,
+                          EventCheckboxRoomExtension.relationshipType,
+                        ),
+                      ),
+                      if (showTaxiCardsAtBottom) const SizedBox(height: 12),
+                    ],
+                    if (showTaxiCardsAtBottom)
+                      for (var i = 0; i < taxiLinks.length; i++) ...[
+                        AmapTaxiCard(link: taxiLinks[i]),
+                        if (i < taxiLinks.length - 1)
+                          const SizedBox(height: 12),
+                      ],
+                  ],
+                ),
+              );
+            }
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
