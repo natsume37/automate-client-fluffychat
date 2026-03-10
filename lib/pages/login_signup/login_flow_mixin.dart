@@ -125,7 +125,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
       // 导航到主页面（无员工时进入员工列表）
       final destination = await resolvePostLoginDestination();
-      debugPrint('[LoginFlow] Matrix login success, navigating to $destination');
+      debugPrint(
+        '[LoginFlow] Matrix login success, navigating to $destination',
+      );
       PsygoApp.router.go(destination);
       return true;
     } catch (e, stackTrace) {
