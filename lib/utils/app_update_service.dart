@@ -312,7 +312,7 @@ class AppUpdateService {
       }
 
       // 显示更新弹窗（非手动检查时禁止点击遮罩层关闭）
-      final shouldContinue = await showDialog<bool>(
+      await showDialog<bool>(
         context: context,
         barrierDismissible: showNoUpdateHint ? !response.forceUpdate : false,
         builder: (builderContext) => _UpdateDialog(
@@ -325,8 +325,9 @@ class AppUpdateService {
         ),
       );
 
-      // 如果是强制更新且用户没有点击更新，返回 false
-      if (response.forceUpdate && shouldContinue != true) {
+      // 严格强更：本次检查发现仍需更新时，不放行当前会话。
+      // 用户点击“立即更新”后，需在后续检查中确认版本已更新才会放行。
+      if (response.forceUpdate) {
         return false;
       }
 
@@ -773,13 +774,35 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 跳转外部链接（iOS 或下载失败时）
   Future<void> _openExternalUrl() async {
+    final l10n = L10n.of(context);
     final uri = Uri.parse(widget.downloadUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-    if (context.mounted) {
-      setState(() => _allowPop = true);
-      Navigator.of(context).pop(true);
+    try {
+      final canOpen = await canLaunchUrl(uri);
+      final opened = canOpen
+          ? await launchUrl(uri, mode: LaunchMode.externalApplication)
+          : false;
+
+      if (!opened) {
+        if (context.mounted) {
+          setState(() {
+            _state = _UpdateState.error;
+            _errorMessage = l10n.appUpdateDownloadLinkFailed;
+          });
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        setState(() => _allowPop = true);
+        Navigator.of(context).pop(true);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        setState(() {
+          _state = _UpdateState.error;
+          _errorMessage = l10n.appUpdateDownloadLinkFailed;
+        });
+      }
     }
   }
 
