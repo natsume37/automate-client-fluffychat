@@ -320,10 +320,10 @@ jobs:
             artifact_name="$(basename "$artifact_dir")"
 
             case "$artifact_name" in
-              fluffychat-android-*) platform="android-apk" ;;
+              fluffychat-android-*) platform="android" ;;
               fluffychat-linux-*) platform="linux" ;;
               fluffychat-web*) platform="web" ;;
-              fluffychat-windows-*) platform="windows64" ;;
+              fluffychat-windows-*) platform="windows" ;;
               *)
                 echo "Skip unsupported artifact name: $artifact_name"
                 continue
@@ -382,7 +382,8 @@ jobs:
             -a "$COS_SECRET_ID" \
             -s "$COS_SECRET_KEY" \
             -b "$COS_BUCKET" \
-            -r "$COS_REGION"
+            -r "$COS_REGION" \
+            -m 30
 
       - name: Upload artifacts and manifest
         env:
@@ -395,19 +396,19 @@ jobs:
           for platform_dir in dist/*; do
             [ -d "$platform_dir" ] || continue
             platform_name="$(basename "$platform_dir")"
-            while IFS= read -r -d '' file_path; do
-              object_key="artifacts/${APP_NAME}/${BUILD_VERSION}/${GIT_SHA}/${platform_name}/$(basename "$file_path")"
-              coscmd upload -f "$file_path" "$object_key"
-              if [ "$CHANNEL" != "none" ]; then
-                channel_object_key="${CHANNEL}/${APP_NAME}/${platform_name}/$(basename "$file_path")"
-                coscmd upload -f "$file_path" "$channel_object_key"
-              fi
-            done < <(find "$platform_dir" -type f -print0)
+            echo "Uploading platform directory: ${platform_name}"
+            find "$platform_dir" -maxdepth 1 -type f -printf '  %f %s bytes\n'
+            object_prefix="artifacts/${APP_NAME}/${BUILD_VERSION}/${GIT_SHA}/${platform_name}"
+            coscmd upload -rs "$platform_dir" "$object_prefix"
+            if [ "$CHANNEL" != "none" ]; then
+              channel_object_prefix="${CHANNEL}/${platform_name}"
+              coscmd upload -rs "$platform_dir" "$channel_object_prefix"
+            fi
           done
 
           coscmd upload -f "manifests/${BUILD_VERSION}.json" "manifests/${BUILD_VERSION}.json"
           if [ "$CHANNEL" != "none" ]; then
-            coscmd upload -f "manifests/${BUILD_VERSION}.json" "${CHANNEL}/${APP_NAME}/manifest.json"
+            coscmd upload -f "manifests/${BUILD_VERSION}.json" "${CHANNEL}/manifest.json"
           fi
 
       - name: Write channel pointer
@@ -426,7 +427,7 @@ jobs:
             --app-name "$APP_NAME" \
             --build-version "$BUILD_VERSION" \
             --git-sha "$GIT_SHA" \
-            --channel-artifacts-prefix "${CHANNEL}/${APP_NAME}" \
+            --channel-artifacts-prefix "${CHANNEL}" \
             --manifest-key "manifests/${BUILD_VERSION}.json" \
             --source-run-id "$GITHUB_RUN_ID" \
             --source-ref "$GITHUB_REF_NAME" \

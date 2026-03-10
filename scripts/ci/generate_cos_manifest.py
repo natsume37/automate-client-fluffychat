@@ -42,7 +42,7 @@ def main() -> None:
     channel = args.channel.strip()
     channel_prefix = None
     if channel and channel != "none":
-        channel_prefix = f"{channel}/{args.app_name}"
+        channel_prefix = channel
 
     for platform_dir in sorted(p for p in input_dir.iterdir() if p.is_dir()):
         platform = platform_dir.name
