@@ -95,6 +95,24 @@ flutter upgrade
 当前上传平台为：Android、Linux、Windows、Web。
 版本号按工作流运行号自动递增，每次增加 `0.01`，用于避免同 key 覆盖。
 
+如果你只是想打一个“本地测试版”，现在不用改仓库级 GitHub Variables。
+手动触发 `Cross Platform CI` 时，直接填写这些可选输入即可：
+
+1. `build_app_name`
+2. `build_app_id_suffix`
+3. `build_k8s_namespace`
+4. `build_api_base_url`
+5. `build_matrix_homeserver`
+6. `build_chatbot_base_url`
+7. `include_mobile_login_secret`
+
+说明：
+
+1. 这些输入只影响这一次手动构建，不会污染仓库默认配置。
+2. 如果要测试安卓模拟器上的本地服务，可填 `http://10.0.2.2:8080` 和 `http://10.0.2.2:8008`。
+3. 如果要装到实体机，不能用 `10.0.2.2`，需要改成你电脑的局域网 IP。
+4. `include_mobile_login_secret=true` 时，会把仓库里的 `ALIYUN_SECRET_KEY` 注入这次测试包，便于测试一键登录；默认关闭。
+
 ### 触发方式
 
 在 GitHub Actions 中手动运行 `Cross Platform CI`，可配置：
@@ -102,6 +120,7 @@ flutter upgrade
 1. `upload_to_cos`：是否上传构建产物到 COS（布尔值）
 2. `target_channel`：是否更新渠道指针（`none/dev/test/release`）
 3. `app_name`：对象 key 前缀中的应用名（默认 `fluffychat`）
+4. `build_*`：仅本次手动构建使用的客户端配置覆盖项
 
 Linux 产物会同时包含：
 

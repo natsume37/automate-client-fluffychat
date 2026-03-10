@@ -28,6 +28,41 @@ on:
         required: false
         type: string
         default: fluffychat
+      build_app_name:
+        description: Optional APP_NAME override for manual test builds
+        required: false
+        type: string
+        default: ''
+      build_app_id_suffix:
+        description: Optional APP_ID_SUFFIX override for manual test builds
+        required: false
+        type: string
+        default: ''
+      build_k8s_namespace:
+        description: Optional K8S_NAMESPACE override for manual test builds
+        required: false
+        type: string
+        default: ''
+      build_api_base_url:
+        description: Optional API_BASE_URL override for manual test builds
+        required: false
+        type: string
+        default: ''
+      build_matrix_homeserver:
+        description: Optional MATRIX_HOMESERVER override for manual test builds
+        required: false
+        type: string
+        default: ''
+      build_chatbot_base_url:
+        description: Optional CHATBOT_BASE_URL override for manual test builds
+        required: false
+        type: string
+        default: ''
+      include_mobile_login_secret:
+        description: Include ALIYUN_SECRET_KEY in manual test builds
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: cross-platform-ci-${{ github.ref }}
@@ -92,16 +127,18 @@ jobs:
       - run: flutter pub get
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_name != '' && inputs.build_app_name || vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_id_suffix != '' && inputs.build_app_id_suffix || vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_k8s_namespace != '' && inputs.build_k8s_namespace || vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_api_base_url != '' && inputs.build_api_base_url || vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ github.event_name == 'workflow_dispatch' && inputs.build_matrix_homeserver != '' && inputs.build_matrix_homeserver || vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_chatbot_base_url != '' && inputs.build_chatbot_base_url || vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
           PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
           PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
           PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
           PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
+          ALIYUN_SECRET_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && secrets.ALIYUN_SECRET_KEY || '' }}
+          ALLOW_CLIENT_TEST_SECRETS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && 'true' || 'false' }}
           STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: |
           args=(--output ci.env.json)
@@ -144,16 +181,18 @@ jobs:
       - name: Generate Flutter build env
         shell: bash
         env:
-          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_name != '' && inputs.build_app_name || vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_id_suffix != '' && inputs.build_app_id_suffix || vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_k8s_namespace != '' && inputs.build_k8s_namespace || vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_api_base_url != '' && inputs.build_api_base_url || vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ github.event_name == 'workflow_dispatch' && inputs.build_matrix_homeserver != '' && inputs.build_matrix_homeserver || vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_chatbot_base_url != '' && inputs.build_chatbot_base_url || vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
           PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
           PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
           PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
           PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
+          ALIYUN_SECRET_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && secrets.ALIYUN_SECRET_KEY || '' }}
+          ALLOW_CLIENT_TEST_SECRETS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && 'true' || 'false' }}
           STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: |
           args=(--output ci.env.json)
@@ -207,16 +246,18 @@ jobs:
         run: bash ./scripts/ci/ensure_android_ndk.sh
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_name != '' && inputs.build_app_name || vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_id_suffix != '' && inputs.build_app_id_suffix || vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_k8s_namespace != '' && inputs.build_k8s_namespace || vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_api_base_url != '' && inputs.build_api_base_url || vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ github.event_name == 'workflow_dispatch' && inputs.build_matrix_homeserver != '' && inputs.build_matrix_homeserver || vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_chatbot_base_url != '' && inputs.build_chatbot_base_url || vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
           PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
           PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
           PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
           PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
+          ALIYUN_SECRET_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && secrets.ALIYUN_SECRET_KEY || '' }}
+          ALLOW_CLIENT_TEST_SECRETS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && 'true' || 'false' }}
           STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: |
           args=(--output ci.env.json)
@@ -263,16 +304,18 @@ jobs:
       - run: flutter pub get
       - name: Generate Flutter build env
         env:
-          APP_NAME: ${{ vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
-          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
-          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
-          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
-          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          APP_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_name != '' && inputs.build_app_name || vars.APP_NAME != '' && vars.APP_NAME || secrets.APP_NAME }}
+          APP_ID_SUFFIX: ${{ github.event_name == 'workflow_dispatch' && inputs.build_app_id_suffix != '' && inputs.build_app_id_suffix || vars.APP_ID_SUFFIX != '' && vars.APP_ID_SUFFIX || secrets.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_k8s_namespace != '' && inputs.build_k8s_namespace || vars.K8S_NAMESPACE != '' && vars.K8S_NAMESPACE || secrets.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_api_base_url != '' && inputs.build_api_base_url || vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ github.event_name == 'workflow_dispatch' && inputs.build_matrix_homeserver != '' && inputs.build_matrix_homeserver || vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_chatbot_base_url != '' && inputs.build_chatbot_base_url || vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
           PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
           PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
           PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
           PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
+          ALIYUN_SECRET_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && secrets.ALIYUN_SECRET_KEY || '' }}
+          ALLOW_CLIENT_TEST_SECRETS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_mobile_login_secret == true && 'true' || 'false' }}
           STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: |
           args=(--output ci.env.json)

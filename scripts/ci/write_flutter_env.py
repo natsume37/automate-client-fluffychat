@@ -22,6 +22,10 @@ SAFE_KEYS = (
     "PUSH_IOS_APP_SECRET",
 )
 
+OPTIONAL_TEST_SECRET_KEYS = (
+    "ALIYUN_SECRET_KEY",
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -43,8 +47,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
+    include_test_secrets = (
+        os.environ.get("ALLOW_CLIENT_TEST_SECRETS", "").strip().lower() == "true"
+    )
+
+    allowed_keys = list(SAFE_KEYS)
+    if include_test_secrets:
+        allowed_keys.extend(OPTIONAL_TEST_SECRET_KEYS)
+
     values = {}
-    for key in SAFE_KEYS:
+    for key in allowed_keys:
         value = os.environ.get(key, "").strip()
         if value:
             values[key] = value
