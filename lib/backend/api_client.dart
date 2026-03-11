@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
+import '../core/auth_device_identity.dart';
 import '../core/config.dart';
 import '../core/token_manager.dart';
 import '../utils/custom_http_client.dart';
@@ -81,6 +82,14 @@ class PsygoApiClient {
     return code != null && _unauthorizedCodes.contains(code);
   }
 
+  Future<Map<String, String>> _authDevicePayload() async {
+    final authDevice = await AuthDeviceIdentity.current();
+    return <String, String>{
+      'auth_device_id': authDevice.authDeviceId,
+      'auth_device_platform': authDevice.authDevicePlatform,
+    };
+  }
+
   Future<Response<Map<String, dynamic>>> _requestWithAuthRetry(
     Future<Response<Map<String, dynamic>>> Function(String token) request,
   ) async {
@@ -117,10 +126,14 @@ class PsygoApiClient {
   /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
+    final authDevicePayload = await _authDevicePayload();
     try {
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
-        data: {'phone': phone},
+        data: <String, dynamic>{
+          'phone': phone,
+          ...authDevicePayload,
+        },
       );
     } on DioException catch (e) {
       debugPrint(
@@ -165,18 +178,27 @@ class PsygoApiClient {
 
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
+    final authDevicePayload = await _authDevicePayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {'phone': phone, 'code': code},
+      data: <String, dynamic>{
+        'phone': phone,
+        'code': code,
+        ...authDevicePayload,
+      },
     );
     return _handleAuthResponse(res, '登录失败');
   }
 
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
+    final authDevicePayload = await _authDevicePayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {'access_token': accessToken},
+      data: <String, dynamic>{
+        'access_token': accessToken,
+        ...authDevicePayload,
+      },
     );
     return _handleAuthResponse(res, '登录失败');
   }

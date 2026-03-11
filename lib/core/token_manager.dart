@@ -9,15 +9,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
+import 'auth_device_identity.dart';
 import 'config.dart';
 import 'token_refresh_lock.dart';
 import '../utils/custom_http_client.dart';
 
 /// Token 状态变化事件
 enum TokenEvent {
-  refreshed,    // Token 刷新成功
-  expired,      // Token 过期，需要重新登录
-  loggedOut,    // 用户主动登出或被强制登出
+  refreshed, // Token 刷新成功
+  expired, // Token 过期，需要重新登录
+  loggedOut, // 用户主动登出或被强制登出
 }
 
 /// 统一的 Token 管理器
@@ -41,7 +42,8 @@ class TokenManager {
 
   // HTTP client for refresh requests
   http.Client? _httpClient;
-  http.Client get httpClient => _httpClient ??= CustomHttpClient.createHTTPClient();
+  http.Client get httpClient =>
+      _httpClient ??= CustomHttpClient.createHTTPClient();
 
   // 事件流控制器
   final _eventController = StreamController<TokenEvent>.broadcast();
@@ -111,19 +113,27 @@ class TokenManager {
       }
 
       try {
+        final authDevice = await AuthDeviceIdentity.current();
         final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh-token');
-        final response = await httpClient.post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'refresh_token': refreshToken}),
-        ).timeout(PsygoConfig.receiveTimeout);
+        final response = await httpClient
+            .post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'refresh_token': refreshToken,
+                'auth_device_id': authDevice.authDeviceId,
+                'auth_device_platform': authDevice.authDevicePlatform,
+              }),
+            )
+            .timeout(PsygoConfig.receiveTimeout);
 
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         final code = json['code'] as int? ?? -1;
 
         if (code != 0) {
           final errorMsg = json['message'] as String? ?? 'Token refresh failed';
-          Logs().e('[TokenManager] Token refresh failed: code=$code, msg=$errorMsg');
+          Logs().e(
+              '[TokenManager] Token refresh failed: code=$code, msg=$errorMsg');
 
           // 10002/10003 表示认证失败，需要重新登录
           if (code == 10002 || code == 10003) {
@@ -142,7 +152,9 @@ class TokenManager {
         final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
         final writes = <Future<void>>[
           _storage.write(key: _primaryKey, value: newAccessToken),
-          _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
+          _storage.write(
+              key: _expiresAtKey,
+              value: expiresAt.millisecondsSinceEpoch.toString()),
         ];
         // 服务端返回新的 refresh token（一次性）
         if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
@@ -182,18 +194,23 @@ class TokenManager {
 
     if (expiresIn != null) {
       final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-      writes.add(_storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()));
+      writes.add(_storage.write(
+          key: _expiresAtKey,
+          value: expiresAt.millisecondsSinceEpoch.toString()));
     }
 
     await Future.wait(writes);
   }
 
   /// 更新 Access Token（刷新后调用）
-  Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
+  Future<void> updateAccessToken(String accessToken, int expiresIn,
+      {String? refreshToken}) async {
     final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
     final writes = <Future<void>>[
       _storage.write(key: _primaryKey, value: accessToken),
-      _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
+      _storage.write(
+          key: _expiresAtKey,
+          value: expiresAt.millisecondsSinceEpoch.toString()),
     ];
     if (refreshToken != null && refreshToken.isNotEmpty) {
       writes.add(_storage.write(key: _refreshKey, value: refreshToken));
