@@ -84,8 +84,12 @@ android {
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    require(keystorePropertiesFile.exists()) { "Missing key.properties" }
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    val hasReleaseKeystore = keystorePropertiesFile.exists()
+    if (hasReleaseKeystore) {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    } else {
+        println("Local test build: android/key.properties not found, falling back to debug signing.")
+    }
 
     // 从 dart-define 读取包名后缀（prod 为空，test 为 _test，dev 为 _dev）
     val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
@@ -118,33 +122,41 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val alias = keystoreProperties["keyAlias"]?.toString()
-            val pass  = keystoreProperties["keyPassword"]?.toString()
-            val file  = keystoreProperties["storeFile"]?.toString()
-            val store = keystoreProperties["storePassword"]?.toString()
+        if (hasReleaseKeystore) {
+            create("release") {
+                val alias = keystoreProperties["keyAlias"]?.toString()
+                val pass  = keystoreProperties["keyPassword"]?.toString()
+                val file  = keystoreProperties["storeFile"]?.toString()
+                val store = keystoreProperties["storePassword"]?.toString()
 
-            require(!alias.isNullOrBlank()) { "Missing keyAlias in key.properties" }
-            require(!pass.isNullOrBlank()) { "Missing keyPassword in key.properties" }
-            require(!file.isNullOrBlank()) { "Missing storeFile in key.properties" }
-            require(!store.isNullOrBlank()) { "Missing storePassword in key.properties" }
+                require(!alias.isNullOrBlank()) { "Missing keyAlias in key.properties" }
+                require(!pass.isNullOrBlank()) { "Missing keyPassword in key.properties" }
+                require(!file.isNullOrBlank()) { "Missing storeFile in key.properties" }
+                require(!store.isNullOrBlank()) { "Missing storePassword in key.properties" }
 
-            keyAlias = alias
-            keyPassword = pass
-            storeFile = file(file)
-            storePassword = store
+                keyAlias = alias
+                keyPassword = pass
+                storeFile = file(file)
+                storePassword = store
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
         debug {
             // 一键登录 SDK 需要签名与阿里云控制台配置一致
             // debug 也使用 release 签名，避免 600017 错误
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
