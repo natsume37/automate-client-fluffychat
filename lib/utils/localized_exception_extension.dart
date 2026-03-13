@@ -26,6 +26,14 @@ extension LocalizedExceptionExtension on Object {
     return '$numString ${'kMGTPEZY'[i - 1]}B';
   }
 
+  static String _smsCodeBusyMessage(BuildContext context) {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (languageCode == 'zh') {
+      return '系统繁忙请稍后再试';
+    }
+    return L10n.of(context).tooManyRequestsWarning;
+  }
+
   String toLocalizedString(
     BuildContext context, [
     ExceptionContext? exceptionContext,
@@ -43,6 +51,9 @@ extension LocalizedExceptionExtension on Object {
       final exception = this as AutomateBackendException;
       if (exception.statusCode == null) {
         return L10n.of(context).noConnectionToTheServer;
+      }
+      if (exceptionContext == ExceptionContext.requestVerifyCode) {
+        return _smsCodeBusyMessage(context);
       }
       return L10n.of(context).serverError;
     }
